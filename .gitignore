@@ -1,0 +1,25 @@
+# SQL dumps
+*.sql
+
+# Composer
+composer.json
+composer.lock
+/vendor/
+
+# Custom sensitive logic
+/functions/
+
+# Environment / secrets (add if applicable)
+.env
+.env.*
+
+# XAMPP / system junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
