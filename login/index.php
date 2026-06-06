@@ -153,7 +153,7 @@
     }
 
     try {
-      if (!queueNewReactivationAttemptEmail($db2, $userCode, $email)) {
+      if (!queueNewReactivationAttemptEmail($db2, $userCode, $email, getUserLoginEnvironment())) {
         logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Unable to queue new reactivation attempt email.');
       }
     }
