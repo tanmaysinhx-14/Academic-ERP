@@ -59,7 +59,7 @@
       $selectedBatch = normalizeBatchCode($selectedBatch);
       $selectedRoutineUrl = getRoutineEmbedUrl($selectedBatch);
 
-      $batchListConfig = retrieveActiveBatchlist($db1);
+      $batchListConfig = retrieveActiveBatchlist($db2);
       $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
       if (!is_array($activeBatchList)) {
         $activeBatchList = [];

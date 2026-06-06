@@ -82,7 +82,7 @@
         }
       }
 
-      $currentActiveBatches = retrieveActiveBatchlist($db1);
+      $currentActiveBatches = ($db1);
     }
   }
 ?>

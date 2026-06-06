@@ -24,7 +24,7 @@
     $viewMonth = date('Y-m');
     $monthDate = DateTime::createFromFormat('Y-m', $viewMonth) ?: new DateTime('first day of this month');
 
-    $batchListConfig = retrieveActiveBatchlist($db1);
+    $batchListConfig = retrieveActiveBatchlist($db2);
     $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
     if (!is_array($activeBatchList)) {
       $activeBatchList = [];

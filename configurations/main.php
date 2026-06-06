@@ -1,5 +1,5 @@
 <?php
-  $appStatus = checkAppStatus($db1) ?? null;
+  $appStatus = checkAppStatus($db2) ?? null;
   $currentScriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
   $isMaintenancePage = str_contains($currentScriptPath, '/accounts/maintenance/');
 

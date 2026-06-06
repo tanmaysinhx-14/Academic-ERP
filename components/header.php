@@ -34,7 +34,7 @@
           <a class="navbar-brand text-white" href="<?php echo escapeOutput($logo_href); ?>">
             <span class="ff-poppins logo-md"><?php echo escapeOutput($logo_text); ?></span>
           </a>
-          <span class="bg-primary p-2 px-5 rounded-pill text-white ff-inter ms-auto fw-bold">Accounts Portal</span>
+          <span class="bg-primary p-2 px-5 rounded-pill text-white ms-auto fw-bold">Accounts Portal</span>
         </div>
       </nav>
 
@@ -46,35 +46,34 @@
         </div>
       </nav>
 
-      <?php if (!empty($_SESSION['toast'])): ?>
+      <?php if (!empty($_SESSION['toasts'])): ?>
         <div class="toast-float" aria-live="polite" aria-atomic="true">
-          <div class="toast toast-<?= htmlspecialchars($_SESSION['toast']['type'], ENT_QUOTES, 'UTF-8') ?>"
-              role="alert"
-              data-duration="<?= (int) $_SESSION['toast']['duration'] ?>">
-            <div class="toast-body ff-inter">
-              <?= htmlspecialchars($_SESSION['toast']['message'], ENT_QUOTES, 'UTF-8') ?>
+          <?php foreach ($_SESSION['toasts'] as $toast): ?>
+            <div class="toast toast-<?= htmlspecialchars($toast['type'], ENT_QUOTES, 'UTF-8') ?>"
+                role="alert"
+                data-duration="<?= (int) $toast['duration'] ?>">
+              <div class="toast-body ff-inter">
+                <?= htmlspecialchars($toast['message'], ENT_QUOTES, 'UTF-8') ?>
+              </div>
             </div>
-          </div>
+          <?php endforeach; ?>
         </div>
-
-        <?php unset($_SESSION['toast']); ?>
+        <?php unset($_SESSION['toasts']); ?>
       <?php endif; ?>
 
-      <div>
+      <script type="text/javascript">
+        window.addEventListener('load', () => {
+          document.querySelectorAll('.toast').forEach(toast => {
+            const duration = parseInt(toast.dataset.duration, 10) || 7000;
 
-        <script type="text/javascript">
-          window.addEventListener('load', () => {
-            document.querySelectorAll('.toast').forEach(toast => {
-              const duration = parseInt(toast.dataset.duration, 10) || 7000;
-
-              setTimeout(() => {
-                toast.classList.add('toast-hide');
-                toast.addEventListener(
-                  'animationend',
-                  () => toast.remove(),
-                  { once: true }
-                );
-              }, duration);
-            });
+            setTimeout(() => {
+              toast.classList.add('toast-hide');
+              toast.addEventListener(
+                'animationend',
+                () => toast.remove(),
+                { once: true }
+              );
+            }, duration);
           });
-        </script>
+        });
+      </script>

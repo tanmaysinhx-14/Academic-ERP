@@ -10,7 +10,62 @@
 
 <?php // Backend for Dashboard
   if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
-    ; // Do Nothing
+    function fetchDashboardNotifications(PDO $db, string $role, string $studentBatch = ''): array {
+      try {
+        if ($role === 'student') {
+          /*
+          * Fetch non-expired student notifications, then filter in PHP
+          * against the student's own batch code.
+          * Using PHP-side filter keeps this compatible with any MariaDB version
+          * and avoids JSON_CONTAINS edge cases with older drivers.
+          */
+          $stmt = $db->prepare(
+            'SELECT notification_heading,
+                    notification_subheading,
+                    notification_expire_timestamp,
+                    notification_batch_value
+            FROM   notification_records
+            WHERE  notification_user_role        = :role
+              AND  notification_expire_timestamp > NOW()
+            ORDER  BY notification_expire_timestamp ASC'
+          );
+          $stmt->bindValue(':role', 'student', PDO::PARAM_STR);
+          $stmt->execute();
+          $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+          return array_values(array_filter($rows, function (array $row) use ($studentBatch): bool {
+            $batches = json_decode($row['notification_batch_value'] ?? '[]', true) ?: [];
+            return in_array($studentBatch, $batches, true);
+          }));
+        }
+
+        // Faculty → all non-expired faculty notifications (no batch check needed)
+        // Admin   → all non-expired notifications of any role
+        $whereRole = ($role === 'faculty')
+          ? 'WHERE notification_user_role = :role AND notification_expire_timestamp > NOW()'
+          : 'WHERE notification_expire_timestamp > NOW()'; // admin sees all
+
+        $stmt = $db->prepare(
+          "SELECT notification_heading,
+                  notification_subheading,
+                  notification_expire_timestamp,
+                  notification_user_role,
+                  notification_batch_value
+          FROM   notification_records
+          $whereRole
+          ORDER  BY notification_expire_timestamp ASC"
+        );
+        if ($role === 'faculty') {
+          $stmt->bindValue(':role', 'faculty', PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+      }
+      catch (PDOException) {
+        return [];
+      }
+    }  
+    $dashboardNotifications = fetchDashboardNotifications($db2, getUserRoleUsingUsercode($_SESSION['usercode']), $userRecord['student_batch_details']);
   }
 ?>
 
@@ -73,9 +128,25 @@
           <div class="container">
             <div class="row justify-content-center px-5">
               <div class="col-12 col-md-10">
-                <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bold">
-                Student Dashboard
-              </span>
+                <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bold me-4">
+                  Student Dashboard
+                </span>
+                <style>
+                  .notif-arrow {animation: moveArrow 1.2s ease-in-out infinite;}
+
+                  @keyframes moveArrow {
+                    0% { transform: translate(0, 0); opacity: 1; }
+                    50% { transform: translate(5px, -5px);  }
+                    100% { transform: translate(0, 0); opacity: 1; }
+                  }
+                </style>
+                <button class="badge bg-success rounded-pill border-0 px-4 mb-5 fs-sm fw-bold"
+                        onclick="openDialog('notifDialog')">
+                  Notifications
+                  <svg class="notif-arrow"width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M7 17L17 7M17 7H8M17 7V16" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g>
+                  </svg>
+                </button>
                 <h1 class="display-2 text-white">
                   Welcome, 
                   <span class="fw-bold">
@@ -97,6 +168,7 @@
             </svg>      
           </div>
         </div>
+
 
         <main class="mt-n7 mt-md-n15 mb-10">
           <div class="container mt-5">
@@ -279,8 +351,9 @@
         </div>
       </div>
 
+
       <main class="mt-n8 mt-md-n14 pb-10">
-        <div class="container">
+        <div class="container mt-5">
           <div class="row gx-4">
 
             <div class="col-12 col-lg-4">
@@ -567,6 +640,18 @@
                         </g>
                       </svg>
                     </div>
+                    <a class="text-decoration-none text-dark lead" href="../notifications/">Notifications</a>
+                  </div>
+                  <div class="d-flex my-5">
+                    <div class="badge badge-rounded-circle text-bg-success-subtle mt-1 me-4">
+                      <svg style="position: relative; top: -2px;" width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                        <g id="SVGRepo_iconCarrier"> 
+                          <path d="M9 6L15 12L9 18" stroke="#1d8b30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path> 
+                        </g>
+                      </svg>
+                    </div>
                     <a class="text-decoration-none text-dark lead" href="../profile/">Account Profile</a>
                   </div>
                   <div class="d-flex my-5">
@@ -603,6 +688,59 @@
 
   <?php endif ?>
 
+  <!-- NOTIFICATION DIALOG -->
+  <dialog class="ci-dialog" id="notifDialog">
+    <div class="ci-dialog__header">
+      <h5 class="fw-semibold mb-0">Notifications</h5>
+      <button class="ci-dialog__close" onclick="closeDialog('notifDialog')"></button>
+    </div>
+
+    <div class="ci-dialog__body">
+
+      <?php if (!empty($dashboardNotifications)): ?>
+        <div class="d-flex flex-column gap-3">
+
+          <?php foreach ($dashboardNotifications as $notif): 
+            $nHeading = htmlspecialchars_decode($notif['notification_heading'] ?? '');
+            $nSub     = htmlspecialchars_decode($notif['notification_subheading'] ?? '');
+            $nExpiry  = $notif['notification_expire_timestamp'] ?? '';
+            $expiresIn = $nExpiry ? ceil((strtotime($nExpiry) - time()) / 86400) : null;
+          ?>
+
+          <div class="border rounded-3 p-3">
+            <div class="fw-semibold"><?php echo $nHeading; ?></div>
+            <div class="text-body-secondary fs-sm mt-1"><?php echo $nSub; ?></div>
+          </div>
+
+          <?php endforeach; ?>
+
+        </div>
+      <?php else: ?>
+        <div class="text-center py-5 text-body-secondary">
+          No notifications available
+        </div>
+      <?php endif; ?>
+
+    </div>
+
+    <div class="ci-dialog__footer">
+      <button class="btn btn-outline-secondary rounded-pill px-4"
+              onclick="closeDialog('notifDialog')">
+        Close
+      </button>
+    </div>
+  </dialog>
+
+  <script type="text/javascript">
+    function openDialog(id) {
+      document.getElementById(id).showModal();
+    }
+
+    function closeDialog(id) {
+      document.getElementById(id).close();
+    }
+  </script>
+
 <?php elseif(checkForEquality(checkLoginStatus($db1), false, 'strict')): // User Logged Out ?>
   <section class="section-border border-primary min-vh-100">
     <div class="container-lg">
@@ -628,5 +766,23 @@
   </section>
 
 <?php endif; ?>
+
+<script>
+  function dismissNotif(index) {
+    const el = document.getElementById('notif-' + index);
+    if (el) {
+      el.style.transition = 'opacity .2s ease, transform .2s ease';
+      el.style.opacity    = '0';
+      el.style.transform  = 'translateY(-6px)';
+      setTimeout(function () {
+        el.remove();
+        const list = document.getElementById('notifList');
+        if (list && !list.querySelector('.card')) {
+          list.closest('.container').remove();
+        }
+      }, 200);
+    }
+  }
+</script>
 
 <?php require_once '../components/footer.php'; ?>

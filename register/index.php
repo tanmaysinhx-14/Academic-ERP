@@ -541,7 +541,7 @@
                                 disabled>
                           <option value="" disabled selected></option>
                           <?php
-                            $array_batchlist = retrieveActiveBatchlist($db1);
+                            $array_batchlist = retrieveActiveBatchlist($db2);
                             $batches = json_decode($array_batchlist["value"], true);
                             $batches = array_values($batches);
 
