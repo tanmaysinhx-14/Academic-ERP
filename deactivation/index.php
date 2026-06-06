@@ -9,104 +9,96 @@
 ?>
 
 <?php // Logic for Deactivation
+  function queueDeactivationAttemptNotification(PDO $db2, string $role, array $userRecord): void {
+    $roleMap = getRoleDatabaseMap($role);
+
+    if ($roleMap === null) {
+      return;
+    }
+
+    $userCode = $userRecord[$roleMap['usercode_column']] ?? null;
+    $email = $userRecord[$roleMap['email_column']] ?? null;
+
+    if (!is_string($userCode) || $userCode === '' || !is_string($email) || $email === '') {
+      return;
+    }
+
+    try {
+      if (!queueNewDeactivationAttemptEmail($db2, $userCode, $email)) {
+        logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Unable to queue new deactivation attempt email.');
+      }
+    }
+    catch (Throwable $ex) {
+      logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Error occured while queueing new deactivation attempt email: ' . substr($ex->getMessage(), 0, 170));
+    }
+  }
+
   if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
     if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
       if (isset($_POST['deactivateUserBtn'])) {
         $csrfToken = escapeOutput($_POST['csrf_token'] ?? null) ?? null;
 
-        if (!validateCsrfToken($csrfToken)) {
-          setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-          redirectTo('./', 0);
-        }
+        $roleMap = $currentUserRole !== null ? getRoleDatabaseMap($currentUserRole) : null;
+        $activeSessionID = $roleMap !== null ? ($userRecord[$roleMap['current_session_column']] ?? ($_SESSION['session_ID'] ?? null)) : ($_SESSION['session_ID'] ?? null);
 
-        unsetCsrfToken();
+        if(validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
 
-        switch (getUserRoleUsingUsercode($_SESSION['usercode'])) {
-          case 'student':
-            $currentAttemptForDeactivatingUser = 0;
-            $maxAttemptsForDeactivatingUser = 3;
+          $currentAttemptForDeactivatingUser = 0;
+          $maxAttemptsForDeactivatingUser = 3;
 
-            while ($currentAttemptForDeactivatingUser < $maxAttemptsForDeactivatingUser) {
-              try {
-                $db1->beginTransaction();
+          while ($currentAttemptForDeactivatingUser < $maxAttemptsForDeactivatingUser) {
+            try {
+              $db1->beginTransaction();
 
-                $STMT_setActivationStatus = "UPDATE student_configurations
-                                            SET student_account_activation_status = :student_account_activation_status
-                                            WHERE student_usercode = :student_usercode
-                                            LIMIT 1";
-                $setActivationStatus = $db1->prepare($STMT_setActivationStatus);
-                $setActivationStatus->bindValue(':student_account_activation_status', 0, PDO::PARAM_INT);
-                $setActivationStatus->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-                $setActivationStatus->execute();
+              $STMT_setActivationStatus = "UPDATE student_configurations
+                                          SET student_account_activation_status = :student_account_activation_status
+                                          WHERE student_usercode = :student_usercode
+                                          LIMIT 1";
+              $setActivationStatus = $db1->prepare($STMT_setActivationStatus);
+              $setActivationStatus->bindValue(':student_account_activation_status', 0, PDO::PARAM_INT);
+              $setActivationStatus->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+              $setActivationStatus->execute();
 
-
-                
-                $STMT_removeDeviceDetails = "DELETE from student_devicedetails
-                                            WHERE student_session_ID = :student_session_ID
-                                            LIMIT 1";
-                $removeDeviceDetails = $db1->prepare($STMT_removeDeviceDetails);
-                $removeDeviceDetails->bindValue(':student_session_ID', $userRecord['student_current_active_session'], PDO::PARAM_STR);
-                $removeDeviceDetails->execute();
+              
+              $STMT_updateDeactivationTimestamp = "UPDATE student_timestamps
+                                                  SET student_account_deactivation_timestamp = :student_account_deactivation_timestamp
+                                                  WHERE student_usercode = :student_usercode
+                                                  LIMIT 1";
+              $updateDeactivationTimestamp = $db1->prepare($STMT_updateDeactivationTimestamp);
+              $updateDeactivationTimestamp->bindValue(':student_account_deactivation_timestamp', getCurrentTimestamp(), PDO::PARAM_STR);
+              $updateDeactivationTimestamp->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+              $updateDeactivationTimestamp->execute();
 
 
 
-                $STMT_updateCurrentSession = "UPDATE student_configurations 
-                                              SET student_current_active_session = :student_current_active_session
-                                              WHERE student_usercode = :student_usercode
-                                              LIMIT 1";
-                $updateCurrentSession = $db1->prepare($STMT_updateCurrentSession);
-                $updateCurrentSession->bindValue(':student_current_active_session', null, PDO::PARAM_NULL);
-                $updateCurrentSession->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-                $updateCurrentSession->execute();
-
-
-                
-                $STMT_updateDeactivationTimestamp = "UPDATE student_timestamps
-                                                    SET student_account_deactivation_timestamp = :student_account_deactivation_timestamp
-                                                    WHERE student_usercode = :student_usercode
-                                                    LIMIT 1";
-                $updateDeactivationTimestamp = $db1->prepare($STMT_updateDeactivationTimestamp);
-                $updateDeactivationTimestamp->bindValue(':student_account_deactivation_timestamp', getCurrentTimestamp(), PDO::PARAM_STR);
-                $updateDeactivationTimestamp->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-                $updateDeactivationTimestamp->execute();
-
-
-
-                if($db1->commit()) {
-                  session_destroy();
-                  redirectTo('../login/', 0);
-                }
-              }
-              catch (PDOException $ex) {
-                if($db1->inTransaction()) {
-                  $db1->rollBack();
-                }
-
-                if(!isRetryablePdoException($ex)) {
-                  setToast('Error occured while Deactivating User. Contact Admin.', 'danger', 7000);
-
-                  logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Deactivating User: ' . $ex->getMessage());
-
-                  break;
-                }
-
-                $currentAttemptForDeactivatingUser++;
-                sleep(5);
+              if($db1->commit()) {
+                queueDeactivationAttemptNotification($db2, getUserRoleUsingUsercode($_SESSION['usercode']), $userRecord);
+                deleteRememberMeData($db1, $db2, getUserRoleUsingUsercode($_SESSION['usercode']), $_SESSION['usercode'], $activeSessionID);
+                clearAuthenticationSession(true);
+                redirectTo('../login/', 3);
               }
             }
-            if($currentAttemptForDeactivatingUser >= $maxAttemptsForDeactivatingUser) {
-              setToast('Error occured while Deactivating User. Contact Admin.', 'danger', 7000);
+            catch (PDOException $ex) {
+              if($db1->inTransaction()) $db1->rollBack();
+
+              if(!isRetryablePdoException($ex)) {
+                setToast('Error occured while Deactivating User. Contact Admin.', 'danger', 7000);
+
+                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Deactivating User: ' . $ex->getMessage());
+
+                break;
+              }
+
+              $currentAttemptForDeactivatingUser++;
+              sleep(5);
             }
-          break;
-
-          // Faculty cannot deactivate their accounts.
-          case 'faculty':
-          break;
-
-          // Admins cannot deactivate their accounts.
-          case 'admin':
-          break;
+          }
+          if($currentAttemptForDeactivatingUser >= $maxAttemptsForDeactivatingUser) {
+            setToast('Error occured while Deactivating User. Contact Admin.', 'danger', 7000);
+          }
         }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
     }
   }

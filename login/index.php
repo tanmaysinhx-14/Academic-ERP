@@ -83,7 +83,7 @@
            WHERE student_usercode = :usercode
            LIMIT 1'
         );
-        $clearDeactivationTimestamp->bindValue(':deactivationTimestamp', null, PDO::PARAM_NULL);
+        $clearDeactivationTimestamp->bindValue(':deactivationTimestamp', '01/01/2000 00:00:00', PDO::PARAM_STR);
         $clearDeactivationTimestamp->bindValue(':usercode', $userRecord['student_usercode'], PDO::PARAM_STR);
         $clearDeactivationTimestamp->execute();
 
@@ -135,6 +135,30 @@
     }
     catch (Throwable $ex) {
       logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Error occured while queueing new login attempt email: ' . substr($ex->getMessage(), 0, 170));
+    }
+  }
+
+  function queueReactivationAttemptNotification(PDO $db2, string $role, array $userRecord): void {
+    $roleMap = getRoleDatabaseMap($role);
+
+    if ($roleMap === null) {
+      return;
+    }
+
+    $userCode = $userRecord[$roleMap['usercode_column']] ?? null;
+    $email = $userRecord[$roleMap['email_column']] ?? null;
+
+    if (!is_string($userCode) || $userCode === '' || !is_string($email) || $email === '') {
+      return;
+    }
+
+    try {
+      if (!queueNewReactivationAttemptEmail($db2, $userCode, $email)) {
+        logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Unable to queue new reactivation attempt email.');
+      }
+    }
+    catch (Throwable $ex) {
+      logAppError($db2, $userCode, getCurrentURL(), 'MAIL_QUEUE', 'Error occured while queueing new reactivation attempt email: ' . substr($ex->getMessage(), 0, 170));
     }
   }
 
