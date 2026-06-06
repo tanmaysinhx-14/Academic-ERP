@@ -57,13 +57,7 @@
     return (int) ($challenge['otp_expires_at'] ?? 0) <= time();
   }
 
-  function buildPasswordResetChallenge(string $role,
-                                      ?string $userCode,
-                                      string $email,
-                                      int $otp,
-                                      bool $knownIdentity,
-                                      int $ttlSeconds = 600
-  ): array {
+  function buildPasswordResetChallenge(string $role, ?string $userCode, string $email, int $otp, bool $knownIdentity, int $ttlSeconds = 600): array {
     return [
       'role' => $role,
       'usercode' => $userCode,
@@ -785,6 +779,4 @@
   </section>
 <?php endif; ?>
 
-<?php
-  require_once '../components/footer.php';
-?>
+<?php require_once '../components/footer.php'; ?>

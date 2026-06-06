@@ -473,7 +473,7 @@
             </form>
 
             <p class="mb-2 text-center text-body-secondary">
-              Don't have an account yet? <a href="../register/">Register</a>.
+              Don't have an account yet? <a href="../register/">Register as Student</a>.
             </p>
 
             <p class="mb-2 text-center text-body-secondary">
