@@ -341,11 +341,11 @@
   require_once '../components/header.php'; 
 ?>
 
-<?php if (checkForEquality(checkLoginStatus($db1), false, 'strict')): ?>
-  <?php if (checkForEquality(checkRememberMeCookiePresence(), true, 'strict') && $rememberMeEmail !== null): ?>
-    <section class="section-border border-primary ff-inter">
+<?php if (checkForEquality(checkLoginStatus($db1), false, 'strict')): // User Logged Out ?>
+  <?php if (checkForEquality(checkRememberMeCookiePresence(), true, 'strict')): // REMEMBER ME Cookie Present ?>
+    <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
-        <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+        <div class="row align-items-center justify-content-center gx-0">
           <div class="col-12 col-md-9 col-lg-6 py-8 py-md-11 px-5 px-sm-0">
             <h1 class="mb-7 fw-bold text-center">
               Login using Saved User Details
@@ -377,10 +377,10 @@
       </div>
     </section>
 
-  <?php elseif (checkForEquality(checkRememberMeCookiePresence(), false, 'strict')): ?>
-    <section class="section-border border-primary ff-inter">
+  <?php elseif (checkForEquality(checkRememberMeCookiePresence(), false, 'strict')): // REMEMBER ME Cookie Not Present ?>
+    <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
-        <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+        <div class="row align-items-center justify-content-center gx-0">
           <div class="col-12 col-lg-6 col-md-9 px-8 px-md-5 py-8 py-md-8">
             <h1 class="mb-2 fw-bold text-center">
               Login
@@ -487,11 +487,10 @@
 
   <?php endif; ?>
 
-
-<?php elseif (checkForEquality(checkLoginStatus($db1), true, 'strict')): ?>
-  <section class="section-border border-primary ff-inter">
+<?php elseif (checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In ?>
+  <section class="section-border border-primary min-vh-100">
     <div class="container d-flex flex-column">
-      <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+      <div class="row align-items-center justify-content-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 px-8 px-md-8 py-8 py-md-8">
           <h1 class="display-3 fw-bold text-center">
             Access Denied
@@ -511,6 +510,4 @@
 
 <?php endif ?>
 
-<?php // Footers
-  require_once '../components/footer.php'; 
-?>
+<?php require_once '../components/footer.php'; ?>

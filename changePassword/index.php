@@ -6,7 +6,7 @@
   extract($bootstrapData, EXTR_OVERWRITE);
 ?>
 
-<?php
+<?php // Backend for Change Password
   function clearPasswordResetChallenge(bool $preserveFormStatus = false): void {
     unset(
       $_SESSION['passwordResetChallenge'],
@@ -567,11 +567,11 @@
   $loginStatus = checkLoginStatus($db1);
   $passwordResetBackUrl = $loginStatus === true ? '../dashboard/' : '../login/';
   $passwordResetBackLabel = $loginStatus === true ? 'Dashboard' : 'Login';
-  if ($loginStatus === true) {
+  if (checkForEquality($loginStatus, true, 'strict')) {
     $breadcrumb_url_1 = '../dashboard/';
     $breadcrumb_title_1 = 'Dashboard';
   }
-  elseif ($loginStatus === false) {
+  elseif (checkForEquality($loginStatus, false, 'strict')) {
     $breadcrumb_url_1 = '../login/';
     $breadcrumb_title_1 = 'Login';
   }
@@ -583,10 +583,10 @@
 ?>
 
 <?php if(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_REQUEST_PENDING', 'strict')): ?>
-  <?php if($loginStatus === true): ?>
-    <section class="section-border border-primary ff-inter">
+  <?php if(checkForEquality($loginStatus, true, 'strict')): ?>
+    <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
-        <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+        <div class="row align-items-center justify-content-center gx-0">
           <div class="col-12 col-lg-6 col-md-8 px-8 px-md-8 py-8 py-md-8">
             <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
@@ -615,9 +615,9 @@
     </section>
 
   <?php else: ?>
-    <section class="section-border border-primary ff-inter">
+    <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
-        <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+        <div class="row align-items-center justify-content-center gx-0">
           <div class="col-12 col-lg-6 col-md-8 px-8 px-md-8 py-8 py-md-8">
             <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
@@ -678,9 +678,9 @@
   <?php endif; ?>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_VERIFICATION_PENDING', 'strict')): ?>
-  <section class="section-border border-primary ff-inter">
+  <section class="section-border border-primary min-vh-100">
     <div class="container d-flex flex-column">
-      <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+      <div class="row align-items-center justify-content-center gx-0">
         <div class="col-12 col-lg-6 col-md-8 px-8 px-md-8 py-8 py-md-8">
           <h1 class="mb-0 fw-bold text-center">Verify OTP</h1>
           <p class="lead mb-7 text-center text-body-secondary">
@@ -721,9 +721,9 @@
   </section>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'CHANGE_PASSWORD_PENDING', 'strict')): ?>
-  <section class="section-border border-primary ff-inter">
+  <section class="section-border border-primary min-vh-100">
     <div class="container d-flex flex-column">
-      <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+      <div class="row align-items-center justify-content-center gx-0">
         <div class="col-12 col-lg-6 col-md-8 px-8 px-md-8 py-8 py-md-8">
           <h1 class="mb-0 fw-bold text-center">Change Password</h1>
           <p class="lead mb-7 text-center text-body-secondary">
@@ -777,6 +777,7 @@
       </div>
     </div>
   </section>
+
 <?php endif; ?>
 
 <?php require_once '../components/footer.php'; ?>
