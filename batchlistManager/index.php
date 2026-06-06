@@ -9,79 +9,81 @@
 ?>
 
 <?php // Backend for Active Batchlist 
-  if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')) {
-    if (isset($_POST['submitActiveBatchlist'])) {
-      $csrf_token = escapeOutput($_POST['csrf_token']) ?? null;
-      if(validateCsrfToken($csrf_token)) {
-        unsetCsrfToken();
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')) {
+      if (isset($_POST['submitActiveBatchlist'])) {
+        $csrf_token = escapeOutput($_POST['csrf_token']) ?? null;
+        if(validateCsrfToken($csrf_token)) {
+          unsetCsrfToken();
 
-        $activeBatchlist = [];
+          $activeBatchlist = [];
 
-        if (isset($_POST['CBSEOptions'])) {
-          foreach ($_POST['CBSEOptions'] as $cbseOption) {
-            array_push($activeBatchlist, $cbseOption);
-          }
-        }
-
-        if (isset($_POST['BSEBOptions'])) {
-          foreach ($_POST['BSEBOptions'] as $bsebOption) {
-            array_push($activeBatchlist, $bsebOption);
-          }
-        }
-
-        if (isset($_POST['ICSEOptions'])) {
-          foreach ($_POST['ICSEOptions'] as $icseOption) {
-            array_push($activeBatchlist, $icseOption);
-          }
-        }
-
-        $currentAttemptForUpdatingBatchlist = 0;
-        $maxAttemptsForUpdatingBatchlist = 3;
-
-        while($currentAttemptForUpdatingBatchlist < $maxAttemptsForUpdatingBatchlist) {
-          try {
-            $STMT_updateActiveBatchlist = "UPDATE app_configurations
-                                          SET value = :value
-                                          WHERE parameter = :parameter";
-
-            $updateActiveBatchlist = $db1->prepare($STMT_updateActiveBatchlist);
-
-            $updateActiveBatchlist->bindValue(':value', json_encode($activeBatchlist), PDO::PARAM_STR);
-            $updateActiveBatchlist->bindValue(':parameter', 'active_batchlist', PDO::PARAM_STR);
-
-            if ($updateActiveBatchlist->execute()) {
-              setToast('Batchlist Updated Successfully.', 'success', 7000);
-              break;
+          if (isset($_POST['CBSEOptions'])) {
+            foreach ($_POST['CBSEOptions'] as $cbseOption) {
+              array_push($activeBatchlist, $cbseOption);
             }
           }
-          catch (PDOException $ex) {
-            if(!isRetryablePdoException($ex)) {
-              setToast('Error occured while Updating Batchlist. Contact Admin.', 'danger', 7000);
 
-              logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Batchlist: ' . $ex->getMessage());
-
-              break;
+          if (isset($_POST['BSEBOptions'])) {
+            foreach ($_POST['BSEBOptions'] as $bsebOption) {
+              array_push($activeBatchlist, $bsebOption);
             }
           }
-          $currentAttemptForUpdatingBatchlist++;
-          sleep(5);
+
+          if (isset($_POST['ICSEOptions'])) {
+            foreach ($_POST['ICSEOptions'] as $icseOption) {
+              array_push($activeBatchlist, $icseOption);
+            }
+          }
+
+          $currentAttemptForUpdatingBatchlist = 0;
+          $maxAttemptsForUpdatingBatchlist = 3;
+
+          while($currentAttemptForUpdatingBatchlist < $maxAttemptsForUpdatingBatchlist) {
+            try {
+              $STMT_updateActiveBatchlist = "UPDATE app_configurations
+                                            SET value = :value
+                                            WHERE parameter = :parameter";
+
+              $updateActiveBatchlist = $db1->prepare($STMT_updateActiveBatchlist);
+
+              $updateActiveBatchlist->bindValue(':value', json_encode($activeBatchlist), PDO::PARAM_STR);
+              $updateActiveBatchlist->bindValue(':parameter', 'active_batchlist', PDO::PARAM_STR);
+
+              if ($updateActiveBatchlist->execute()) {
+                setToast('Batchlist Updated Successfully.', 'success', 7000);
+                break;
+              }
+            }
+            catch (PDOException $ex) {
+              if(!isRetryablePdoException($ex)) {
+                setToast('Error occured while Updating Batchlist. Contact Admin.', 'danger', 7000);
+
+                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Batchlist: ' . $ex->getMessage());
+
+                break;
+              }
+            }
+            $currentAttemptForUpdatingBatchlist++;
+            sleep(5);
+          }
+          if ($currentAttemptForUpdatingBatchlist >= $maxAttemptsForUpdatingBatchlist) {
+            setToast('Error occured while Updating Batchlist. Contact Admin.', 'danger', 7000);
+          }
         }
-        if ($currentAttemptForUpdatingBatchlist >= $maxAttemptsForUpdatingBatchlist) {
-          setToast('Error occured while Updating Batchlist. Contact Admin.', 'danger', 7000);
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+      }
+
+      function checkForActiveBatches(array $currentActiveBatches, string $batchToCheck) {
+        foreach ($currentActiveBatches as $activeBatch) {
+          if (checkForEquality($activeBatch, $batchToCheck, 'strict')) {
+            return true;
+          }
         }
       }
-      else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-    }
 
-    function checkForActiveBatches(array $currentActiveBatches, string $batchToCheck) {
-      foreach ($currentActiveBatches as $activeBatch) {
-        if (checkForEquality($activeBatch, $batchToCheck, 'strict')) {
-          return true;
-        }
-      }
+      $currentActiveBatches = retrieveActiveBatchlist($db1);
     }
-
-    $currentActiveBatches = retrieveActiveBatchlist($db1);
   }
 ?>
 

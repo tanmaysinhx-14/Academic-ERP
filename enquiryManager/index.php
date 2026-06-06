@@ -9,202 +9,204 @@
 ?>
 
 <?php // Backend for Enquiry Manager
-  if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode'] ?? null), 'admin', 'strict')) {
-    /* Get the Current Stage Parameter from the URL and cross-check it against the below array */
-    $allowedStages = ['selectManagerTask', 'viewEnquiryDetails', 'submitEnquiryDetails', 'oldEnquiryDetails'];
-    $stage = $_GET['stage'] ?? null;
-    if (!in_array($stage, $allowedStages, true)) {
-      redirectTo('./?stage=selectManagerTask', 0);
-      exit;
-    }
-    $enquiryFormStatus = $stage; // Important to determine which Form to appear
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode'] ?? null), 'admin', 'strict')) {
+      /* Get the Current Stage Parameter from the URL and cross-check it against the below array */
+      $allowedStages = ['selectManagerTask', 'viewEnquiryDetails', 'submitEnquiryDetails', 'oldEnquiryDetails'];
+      $stage = $_GET['stage'] ?? null;
+      if (!in_array($stage, $allowedStages, true)) {
+        redirectTo('./?stage=selectManagerTask', 0);
+        exit;
+      }
+      $enquiryFormStatus = $stage; // Important to determine which Form to appear
 
 
 
-    /* Stores the Form Data during redirects in the Enquiry List Table */
-    $selectedType     = null;
-    $selectedCategory = null;
-    if (
-      (isset($_POST['viewEnquiriesBtn']) || isset($_POST['updateEnquiryStatus']))
-      && isset($_POST['enquiry_type'], $_POST['enquiry_category'])
-    ) {
-      $selectedType     = escapeOutput($_POST['enquiry_type']);
-      $selectedCategory = escapeOutput($_POST['enquiry_category']);
-    }
-    elseif (isset($_GET['type'], $_GET['category'])) {
-      $selectedType     = escapeOutput($_GET['type']);
-      $selectedCategory = escapeOutput($_GET['category']);
-    }
+      /* Stores the Form Data during redirects in the Enquiry List Table */
+      $selectedType     = null;
+      $selectedCategory = null;
+      if (
+        (isset($_POST['viewEnquiriesBtn']) || isset($_POST['updateEnquiryStatus']))
+        && isset($_POST['enquiry_type'], $_POST['enquiry_category'])
+      ) {
+        $selectedType     = escapeOutput($_POST['enquiry_type']);
+        $selectedCategory = escapeOutput($_POST['enquiry_category']);
+      }
+      elseif (isset($_GET['type'], $_GET['category'])) {
+        $selectedType     = escapeOutput($_GET['type']);
+        $selectedCategory = escapeOutput($_GET['category']);
+      }
 
 
 
-    // Enquiry Creator Form Logic
-    if (isset($_POST['submitEnquiryDetails'])) {
-      $enquiryType     = escapeOutput($_POST['enquiry_type']) ?? null;
-      $enquiryCategory = escapeOutput($_POST['enquiry_category']) ?? null;
-      $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
+      // Enquiry Creator Form Logic
+      if (isset($_POST['submitEnquiryDetails'])) {
+        $enquiryType     = escapeOutput($_POST['enquiry_type']) ?? null;
+        $enquiryCategory = escapeOutput($_POST['enquiry_category']) ?? null;
+        $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
 
-      if(validateCsrfToken($csrfToken)) {
-        $data = $_POST;
-        unset(
-          $data['csrf_token'],
-          $data['submitEnquiryDetails']
-        );
+        if(validateCsrfToken($csrfToken)) {
+          $data = $_POST;
+          unset(
+            $data['csrf_token'],
+            $data['submitEnquiryDetails']
+          );
 
-        $enquiryMetaData = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+          $enquiryMetaData = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        $currentAttemptForUploadingEnquiryData = 0;
-        $maxRetriesForUploadingEnquiryData = 3;
-        while ($currentAttemptForUploadingEnquiryData < $maxRetriesForUploadingEnquiryData) {
+          $currentAttemptForUploadingEnquiryData = 0;
+          $maxRetriesForUploadingEnquiryData = 3;
+          while ($currentAttemptForUploadingEnquiryData < $maxRetriesForUploadingEnquiryData) {
+            try {
+              $STMT_uploadEnquiryData = "INSERT INTO enquiry_details (enquiry_type, enquiry_category, enquiry_metadata, enquiry_timestamp) 
+                                        VALUES (:enquiry_type, :enquiry_category, :enquiry_metadata, :enquiry_timestamp)";
+
+              $uploadEnquiryData = $db1->prepare($STMT_uploadEnquiryData);
+
+              $uploadEnquiryData->bindValue(':enquiry_type', $enquiryType, PDO::PARAM_STR);
+              $uploadEnquiryData->bindValue(':enquiry_category', $enquiryCategory, PDO::PARAM_STR);
+              $uploadEnquiryData->bindValue(':enquiry_metadata', $enquiryMetaData, PDO::PARAM_STR);
+              $uploadEnquiryData->bindValue(':enquiry_timestamp', getCurrentTimestamp(), PDO::PARAM_STR);
+
+              if($uploadEnquiryData->execute()) {
+                setToast('Enquiry Data saved successfully!', 'success', 7000);
+                break;
+              }
+            }
+            catch (PDOException $ex) {
+              if(!isRetryablePdoException($ex)) {
+                setToast('Error occured while Uploading Enquiry Data. Contact Admin', 'danger', 7000);
+
+                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Uploading Enquiry Data: ' . $ex->getMessage());
+
+                break;
+              }
+
+              $currentAttemptForUploadingEnquiryData++;
+              sleep(5);
+            } 
+          }
+          if($currentAttemptForUploadingEnquiryData >= $maxRetriesForUploadingEnquiryData) {
+            setToast('Error occured while Uploading Enquiry Data. Contact Admin', 'danger', 7000);
+          }
+        }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+      }
+
+      $recordsPerPage = 10;
+      $currentPage = isset($_GET['page']) && ctype_digit($_GET['page']) && $_GET['page'] > 0
+        ? (int) $_GET['page']
+        : 1;
+      $offset = ($currentPage - 1) * $recordsPerPage;
+
+      // Current Enquiry List Viewer Logic
+      if ($selectedType && $selectedCategory) {
+        $currentAttemptForFetchingEnquiryRecords = 0;
+        $maxRetriesForFetchingEnquiryRecords = 3;
+
+        $STMT_countRecords = "
+          SELECT COUNT(*)
+          FROM enquiry_details
+          WHERE enquiry_type = :enquiry_type
+            AND enquiry_category = :enquiry_category
+            AND enquiry_has_been_previewed = 0
+        ";
+
+        $countStmt = $db1->prepare($STMT_countRecords);
+        $countStmt->bindValue(':enquiry_type', $selectedType, PDO::PARAM_STR);
+        $countStmt->bindValue(':enquiry_category', $selectedCategory, PDO::PARAM_STR);
+        $countStmt->execute();
+
+        $totalRecords = (int) $countStmt->fetchColumn();
+        $totalPages   = (int) ceil($totalRecords / $recordsPerPage);
+
+        while ($currentAttemptForFetchingEnquiryRecords < $maxRetriesForFetchingEnquiryRecords) {
           try {
-            $STMT_uploadEnquiryData = "INSERT INTO enquiry_details (enquiry_type, enquiry_category, enquiry_metadata, enquiry_timestamp) 
-                                      VALUES (:enquiry_type, :enquiry_category, :enquiry_metadata, :enquiry_timestamp)";
+            $STMT_fetchEnquiryRecords = "
+              SELECT * FROM enquiry_details
+              WHERE enquiry_type = :enquiry_type
+                AND enquiry_category = :enquiry_category
+                AND enquiry_has_been_previewed = 0
+              ORDER BY enquiry_timestamp DESC
+              LIMIT :limit OFFSET :offset
 
-            $uploadEnquiryData = $db1->prepare($STMT_uploadEnquiryData);
+            ";
 
-            $uploadEnquiryData->bindValue(':enquiry_type', $enquiryType, PDO::PARAM_STR);
-            $uploadEnquiryData->bindValue(':enquiry_category', $enquiryCategory, PDO::PARAM_STR);
-            $uploadEnquiryData->bindValue(':enquiry_metadata', $enquiryMetaData, PDO::PARAM_STR);
-            $uploadEnquiryData->bindValue(':enquiry_timestamp', getCurrentTimestamp(), PDO::PARAM_STR);
+            $fetchEnquiryRecords = $db1->prepare($STMT_fetchEnquiryRecords);
+            $fetchEnquiryRecords->bindValue(':enquiry_type', $selectedType, PDO::PARAM_STR);
+            $fetchEnquiryRecords->bindValue(':enquiry_category', $selectedCategory, PDO::PARAM_STR);
+            $fetchEnquiryRecords->bindValue(':limit', $recordsPerPage, PDO::PARAM_INT);
+            $fetchEnquiryRecords->bindValue(':offset', $offset, PDO::PARAM_INT);
 
-            if($uploadEnquiryData->execute()) {
-              setToast('Enquiry Data saved successfully!', 'success', 7000);
+            if ($fetchEnquiryRecords->execute()) {
+              setToast('Enquiry Details fetched successfully.', 'success', 7000);
+
+              $fetchedRecords = $fetchEnquiryRecords->fetchAll(PDO::FETCH_ASSOC);
+              break;
+            }
+          }
+          catch (PDOException $ex) {
+            if (!isRetryablePdoException($ex)) {
+              setToast('Error occured while Fetching Enquiry Details. Contact Admin.', 'danger', 7000);
+
+              logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Fetching Enquiry Records: ' . $ex->getMessage());
+
+              break;
+            }
+            $currentAttemptForFetchingEnquiryRecords++;
+            sleep(5);
+          }
+        }
+        if($currentAttemptForFetchingEnquiryRecords >= $maxRetriesForFetchingEnquiryRecords) {
+          setToast('Error occured while Fetching Enquiry Details. Contact Admin.', 'danger', 7000);
+        }
+      }
+
+      // Action Button Logic which moves Current Enquiry List Records into Old Records 
+      if (isset($_POST['updateEnquiryStatus'])) {
+        $record_id = escapeOutput($_POST['record_id'] ?? '');
+
+        $currentAttemptForUpdatingRecordStatus = 0;
+        $maxRetriesForUpdatingRecordStatus = 3;
+
+        while ($currentAttemptForUpdatingRecordStatus < $maxRetriesForUpdatingRecordStatus) {
+          try {
+            $STMT_updateEnquiryRecords = "UPDATE enquiry_details
+                                          SET enquiry_has_been_previewed = :enquiry_has_been_previewed
+                                          WHERE enquiry_id = :enquiry_id
+                                          LIMIT 1";
+
+            $updateEnquiryRecords = $db1->prepare($STMT_updateEnquiryRecords);
+
+            $updateEnquiryRecords->bindValue(':enquiry_has_been_previewed', 1, PDO::PARAM_INT);
+            $updateEnquiryRecords->bindValue(':enquiry_id', $record_id, PDO::PARAM_INT);
+            
+            $autoScrollRow = (int)$record_id - 1;
+
+            if($updateEnquiryRecords->execute()) {
+              setToast('Enquiry Details updated successfully.', 'success', 7000);
+
+              redirectTo("./?stage=viewEnquiryDetails&type={$selectedType}&category={$selectedCategory}&page={$currentPage}", 0);
+
               break;
             }
           }
           catch (PDOException $ex) {
             if(!isRetryablePdoException($ex)) {
-              setToast('Error occured while Uploading Enquiry Data. Contact Admin', 'danger', 7000);
+              setToast('Error occured while Updating Enquiry Details. Contact Admin.', 'danger', 7000);
 
-              logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Uploading Enquiry Data: ' . $ex->getMessage());
+              logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Enquiry Record Status: ' . $ex->getMessage());
 
               break;
             }
 
-            $currentAttemptForUploadingEnquiryData++;
+            $currentAttemptForUpdatingRecordStatus++;
             sleep(5);
-          } 
-        }
-        if($currentAttemptForUploadingEnquiryData >= $maxRetriesForUploadingEnquiryData) {
-          setToast('Error occured while Uploading Enquiry Data. Contact Admin', 'danger', 7000);
-        }
-      }
-      else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-    }
-
-    $recordsPerPage = 10;
-    $currentPage = isset($_GET['page']) && ctype_digit($_GET['page']) && $_GET['page'] > 0
-      ? (int) $_GET['page']
-      : 1;
-    $offset = ($currentPage - 1) * $recordsPerPage;
-
-    // Current Enquiry List Viewer Logic
-    if ($selectedType && $selectedCategory) {
-      $currentAttemptForFetchingEnquiryRecords = 0;
-      $maxRetriesForFetchingEnquiryRecords = 3;
-
-      $STMT_countRecords = "
-        SELECT COUNT(*)
-        FROM enquiry_details
-        WHERE enquiry_type = :enquiry_type
-          AND enquiry_category = :enquiry_category
-          AND enquiry_has_been_previewed = 0
-      ";
-
-      $countStmt = $db1->prepare($STMT_countRecords);
-      $countStmt->bindValue(':enquiry_type', $selectedType, PDO::PARAM_STR);
-      $countStmt->bindValue(':enquiry_category', $selectedCategory, PDO::PARAM_STR);
-      $countStmt->execute();
-
-      $totalRecords = (int) $countStmt->fetchColumn();
-      $totalPages   = (int) ceil($totalRecords / $recordsPerPage);
-
-      while ($currentAttemptForFetchingEnquiryRecords < $maxRetriesForFetchingEnquiryRecords) {
-        try {
-          $STMT_fetchEnquiryRecords = "
-            SELECT * FROM enquiry_details
-            WHERE enquiry_type = :enquiry_type
-              AND enquiry_category = :enquiry_category
-              AND enquiry_has_been_previewed = 0
-            ORDER BY enquiry_timestamp DESC
-            LIMIT :limit OFFSET :offset
-
-          ";
-
-          $fetchEnquiryRecords = $db1->prepare($STMT_fetchEnquiryRecords);
-          $fetchEnquiryRecords->bindValue(':enquiry_type', $selectedType, PDO::PARAM_STR);
-          $fetchEnquiryRecords->bindValue(':enquiry_category', $selectedCategory, PDO::PARAM_STR);
-          $fetchEnquiryRecords->bindValue(':limit', $recordsPerPage, PDO::PARAM_INT);
-          $fetchEnquiryRecords->bindValue(':offset', $offset, PDO::PARAM_INT);
-
-          if ($fetchEnquiryRecords->execute()) {
-            setToast('Enquiry Details fetched successfully.', 'success', 7000);
-
-            $fetchedRecords = $fetchEnquiryRecords->fetchAll(PDO::FETCH_ASSOC);
-            break;
           }
         }
-        catch (PDOException $ex) {
-          if (!isRetryablePdoException($ex)) {
-            setToast('Error occured while Fetching Enquiry Details. Contact Admin.', 'danger', 7000);
-
-            logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Fetching Enquiry Records: ' . $ex->getMessage());
-
-            break;
-          }
-          $currentAttemptForFetchingEnquiryRecords++;
-          sleep(5);
+        if($currentAttemptForUpdatingRecordStatus >= $maxRetriesForUpdatingRecordStatus) {
+          setToast('Error occured while Updating Enquiry Details. Contact Admin.', 'danger', 7000);
         }
-      }
-      if($currentAttemptForFetchingEnquiryRecords >= $maxRetriesForFetchingEnquiryRecords) {
-        setToast('Error occured while Fetching Enquiry Details. Contact Admin.', 'danger', 7000);
-      }
-    }
-
-    // Action Button Logic which moves Current Enquiry List Records into Old Records 
-    if (isset($_POST['updateEnquiryStatus'])) {
-      $record_id = escapeOutput($_POST['record_id'] ?? '');
-
-      $currentAttemptForUpdatingRecordStatus = 0;
-      $maxRetriesForUpdatingRecordStatus = 3;
-
-      while ($currentAttemptForUpdatingRecordStatus < $maxRetriesForUpdatingRecordStatus) {
-        try {
-          $STMT_updateEnquiryRecords = "UPDATE enquiry_details
-                                        SET enquiry_has_been_previewed = :enquiry_has_been_previewed
-                                        WHERE enquiry_id = :enquiry_id
-                                        LIMIT 1";
-
-          $updateEnquiryRecords = $db1->prepare($STMT_updateEnquiryRecords);
-
-          $updateEnquiryRecords->bindValue(':enquiry_has_been_previewed', 1, PDO::PARAM_INT);
-          $updateEnquiryRecords->bindValue(':enquiry_id', $record_id, PDO::PARAM_INT);
-          
-          $autoScrollRow = (int)$record_id - 1;
-
-          if($updateEnquiryRecords->execute()) {
-            setToast('Enquiry Details updated successfully.', 'success', 7000);
-
-            redirectTo("./?stage=viewEnquiryDetails&type={$selectedType}&category={$selectedCategory}&page={$currentPage}", 0);
-
-            break;
-          }
-        }
-        catch (PDOException $ex) {
-          if(!isRetryablePdoException($ex)) {
-            setToast('Error occured while Updating Enquiry Details. Contact Admin.', 'danger', 7000);
-
-            logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Enquiry Record Status: ' . $ex->getMessage());
-
-            break;
-          }
-
-          $currentAttemptForUpdatingRecordStatus++;
-          sleep(5);
-        }
-      }
-      if($currentAttemptForUpdatingRecordStatus >= $maxRetriesForUpdatingRecordStatus) {
-        setToast('Error occured while Updating Enquiry Details. Contact Admin.', 'danger', 7000);
       }
     }
   }

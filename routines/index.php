@@ -9,60 +9,62 @@
 ?>
 
 <?php // Backend for Routines
-  function normalizeBatchCode(?string $batchCode): ?string {
-    if ($batchCode === null) {
-      return null;
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
+      function normalizeBatchCode(?string $batchCode): ?string {
+        if ($batchCode === null) {
+          return null;
+        }
+
+        $batchCode = trim($batchCode);
+
+        if ((bool) preg_match('/^\d+-(CBSE|BSEB|ICSE)$/', $batchCode)) {
+          return $batchCode . '-NULL';
+        }
+
+        return $batchCode;
+      }
+
+      function getRoutineEmbedUrl(?string $batchCode): ?string {
+        $batchCode = normalizeBatchCode($batchCode);
+
+        $routineMap = [
+          '5-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!A1&Item='CBSE'!A1%3AF34&wdInConfigurator=True&wdInConfigurator=True",
+          '6-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!H1&Item='CBSE'!H1%3AM34&wdInConfigurator=True&wdInConfigurator=True",
+          '7-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!O1&Item='CBSE'!O1%3AT34&wdInConfigurator=True&wdInConfigurator=True",
+          '8-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!V1&Item='CBSE'!V1%3AAA34&wdInConfigurator=True&wdInConfigurator=True",
+          '9-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!AC1&Item='CBSE'!AC1%3AAH34&wdInConfigurator=True&wdInConfigurator=True",
+          '10-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!AQ1&Item='CBSE'!AQ1%3AAV34&wdInConfigurator=True&wdInConfigurator=True",
+          '11-CBSE-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!BE1&Item='CBSE'!BE1%3ABJ34&wdInConfigurator=True&wdInConfigurator=True",
+          '11-CBSE-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
+          '11-CBSE-Humanities' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AQ1&Item='Bihar%20Board'!AQ1%3AAV34&wdInConfigurator=True&wdInConfigurator=True",
+          '12-CBSE-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!BL1&Item='CBSE'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
+          '12-CBSE-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!BL1&Item='Bihar%20Board'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
+          '12-CBSE-Humanities' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AX1&Item='Bihar%20Board'!AX1%3ABC34&wdInConfigurator=True&wdInConfigurator=True",
+          '7-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!A1&Item='Bihar%20Board'!A1%3AF34&wdInConfigurator=True&wdInConfigurator=True",
+          '8-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!H1&Item='Bihar%20Board'!H1%3AM34&wdInConfigurator=True&wdInConfigurator=True",
+          '9-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!O1&Item='Bihar%20Board'!O1%3AT34&wdInConfigurator=True&wdInConfigurator=True",
+          '10-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!V1&Item='Bihar%20Board'!V1%3AAA34&wdInConfigurator=True&wdInConfigurator=True",
+          '11-BSEB-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AC1&Item='Bihar%20Board'!AC1%3AAH34&wdInConfigurator=True&wdInConfigurator=True",
+          '11-BSEB-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
+          '12-BSEB-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
+          '12-BSEB-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!BL1&Item='Bihar%20Board'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
+        ];
+
+        return $batchCode !== null ? ($routineMap[$batchCode] ?? null) : null;
+      }
+
+      $selectedBatch = $currentUserRole === 'student' ? ($userRecord['student_batch_details'] ?? null) : (escapeOutput($_GET['batch'] ?? null) ?? null);
+
+      $selectedBatch = normalizeBatchCode($selectedBatch);
+      $selectedRoutineUrl = getRoutineEmbedUrl($selectedBatch);
+
+      $batchListConfig = retrieveActiveBatchlist($db1);
+      $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
+      if (!is_array($activeBatchList)) {
+        $activeBatchList = [];
+      }
     }
-
-    $batchCode = trim($batchCode);
-
-    if ((bool) preg_match('/^\d+-(CBSE|BSEB|ICSE)$/', $batchCode)) {
-      return $batchCode . '-NULL';
-    }
-
-    return $batchCode;
-  }
-
-  function getRoutineEmbedUrl(?string $batchCode): ?string {
-    $batchCode = normalizeBatchCode($batchCode);
-
-    $routineMap = [
-      '5-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!A1&Item='CBSE'!A1%3AF34&wdInConfigurator=True&wdInConfigurator=True",
-      '6-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!H1&Item='CBSE'!H1%3AM34&wdInConfigurator=True&wdInConfigurator=True",
-      '7-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!O1&Item='CBSE'!O1%3AT34&wdInConfigurator=True&wdInConfigurator=True",
-      '8-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!V1&Item='CBSE'!V1%3AAA34&wdInConfigurator=True&wdInConfigurator=True",
-      '9-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!AC1&Item='CBSE'!AC1%3AAH34&wdInConfigurator=True&wdInConfigurator=True",
-      '10-CBSE-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!AQ1&Item='CBSE'!AQ1%3AAV34&wdInConfigurator=True&wdInConfigurator=True",
-      '11-CBSE-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!BE1&Item='CBSE'!BE1%3ABJ34&wdInConfigurator=True&wdInConfigurator=True",
-      '11-CBSE-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
-      '11-CBSE-Humanities' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AQ1&Item='Bihar%20Board'!AQ1%3AAV34&wdInConfigurator=True&wdInConfigurator=True",
-      '12-CBSE-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='CBSE'!BL1&Item='CBSE'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
-      '12-CBSE-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!BL1&Item='Bihar%20Board'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
-      '12-CBSE-Humanities' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AX1&Item='Bihar%20Board'!AX1%3ABC34&wdInConfigurator=True&wdInConfigurator=True",
-      '7-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!A1&Item='Bihar%20Board'!A1%3AF34&wdInConfigurator=True&wdInConfigurator=True",
-      '8-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!H1&Item='Bihar%20Board'!H1%3AM34&wdInConfigurator=True&wdInConfigurator=True",
-      '9-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!O1&Item='Bihar%20Board'!O1%3AT34&wdInConfigurator=True&wdInConfigurator=True",
-      '10-BSEB-NULL' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!V1&Item='Bihar%20Board'!V1%3AAA34&wdInConfigurator=True&wdInConfigurator=True",
-      '11-BSEB-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AC1&Item='Bihar%20Board'!AC1%3AAH34&wdInConfigurator=True&wdInConfigurator=True",
-      '11-BSEB-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
-      '12-BSEB-Science' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!AJ1&Item='Bihar%20Board'!AJ1%3AAO34&wdInConfigurator=True&wdInConfigurator=True",
-      '12-BSEB-Arts' => "https://1drv.ms/x/c/2f9715c06a8aac21/UQQhrIpqwBWXIIAvEx8AAAAAAE3Rt97k_rpt5BU?em=2&wdAllowInteractivity=False&ActiveCell='Bihar%20Board'!BL1&Item='Bihar%20Board'!BL1%3ABQ34&wdInConfigurator=True&wdInConfigurator=True",
-    ];
-
-    return $batchCode !== null ? ($routineMap[$batchCode] ?? null) : null;
-  }
-
-  $selectedBatch = $currentUserRole === 'student'
-    ? ($userRecord['student_batch_details'] ?? null)
-    : (escapeOutput($_GET['batch'] ?? null) ?? null);
-
-  $selectedBatch = normalizeBatchCode($selectedBatch);
-  $selectedRoutineUrl = getRoutineEmbedUrl($selectedBatch);
-
-  $batchListConfig = retrieveActiveBatchlist($db1);
-  $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
-  if (!is_array($activeBatchList)) {
-    $activeBatchList = [];
   }
 ?>
 
@@ -81,7 +83,7 @@
 ?>
 
 <?php if(checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In ?>
-  <?php if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): // For Students?>
+  <?php if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): // For Students ?>
     <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
         <div class="gx-0">

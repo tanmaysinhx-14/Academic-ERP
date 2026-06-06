@@ -9,116 +9,120 @@
 ?>
 
 <?php // Backend for Attendance Viewer
-  $attendanceByDate = [];
-  $attendanceStats = [];
-  $month = (int) date('n');
-  $year = (int) date('Y');
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    $attendanceByDate = [];
+    $attendanceStats = [];
+    $month = (int) date('n');
+    $year = (int) date('Y');
 
-  $selectedBatch = null;
-  $studentsInBatch = [];
-  $studentNames = [];
-  $attendanceCache = [];
-  $allDates = [];
-  $displayMonthName = null;
-  $viewMonth = date('Y-m');
-  $monthDate = DateTime::createFromFormat('Y-m', $viewMonth) ?: new DateTime('first day of this month');
+    $selectedBatch = null;
+    $studentsInBatch = [];
+    $studentNames = [];
+    $attendanceCache = [];
+    $allDates = [];
+    $displayMonthName = null;
+    $viewMonth = date('Y-m');
+    $monthDate = DateTime::createFromFormat('Y-m', $viewMonth) ?: new DateTime('first day of this month');
 
-  $batchListConfig = retrieveActiveBatchlist($db1);
-  $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
-  if (!is_array($activeBatchList)) {
-    $activeBatchList = [];
-  }
-
-  if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
-    $fetchAttendanceRecords = $db2->prepare(
-      "SELECT student_attendance_issue_date
-       FROM attendance_records
-       WHERE student_usercode = :student_usercode"
-    );
-    $fetchAttendanceRecords->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-    $fetchAttendanceRecords->execute();
-
-    foreach ($fetchAttendanceRecords->fetchAll(PDO::FETCH_COLUMN) as $timestamp) {
-      $attendanceByDate[date('Y-m-d', strtotime((string) $timestamp))] = true;
+    $batchListConfig = retrieveActiveBatchlist($db1);
+    $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
+    if (!is_array($activeBatchList)) {
+      $activeBatchList = [];
     }
 
-    foreach ($attendanceByDate as $date => $present) {
-      [$attendanceYear, $attendanceMonth] = explode('-', $date);
-      $attendanceYear = (int) $attendanceYear;
-      $attendanceMonth = (int) $attendanceMonth;
+    if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
+      $fetchAttendanceRecords = $db2->prepare(
+        "SELECT student_attendance_issue_date
+        FROM attendance_records
+        WHERE student_usercode = :student_usercode"
+      );
+      $fetchAttendanceRecords->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+      $fetchAttendanceRecords->execute();
 
-      if (!isset($attendanceStats[$attendanceYear])) {
-        $attendanceStats[$attendanceYear] = [
-          'yearTotal' => 0,
-          'months' => array_fill(1, 12, 0),
-        ];
+      foreach ($fetchAttendanceRecords->fetchAll(PDO::FETCH_COLUMN) as $timestamp) {
+        $attendanceByDate[date('Y-m-d', strtotime((string) $timestamp))] = true;
       }
 
-      $attendanceStats[$attendanceYear]['yearTotal']++;
-      $attendanceStats[$attendanceYear]['months'][$attendanceMonth]++;
+      foreach ($attendanceByDate as $date => $present) {
+        [$attendanceYear, $attendanceMonth] = explode('-', $date);
+        $attendanceYear = (int) $attendanceYear;
+        $attendanceMonth = (int) $attendanceMonth;
+
+        if (!isset($attendanceStats[$attendanceYear])) {
+          $attendanceStats[$attendanceYear] = [
+            'yearTotal' => 0,
+            'months' => array_fill(1, 12, 0),
+          ];
+        }
+
+        $attendanceStats[$attendanceYear]['yearTotal']++;
+        $attendanceStats[$attendanceYear]['months'][$attendanceMonth]++;
+      }
     }
-  } 
-  else {
-    if (isset($_POST['loadAttendanceBtn'])) {
-      $postedBatch = escapeOutput($_POST['batch'] ?? null) ?? null;
 
-      if ($postedBatch !== null) {
-        redirectTo('./?view=' . rawurlencode($postedBatch), 0);
-      }
+    elseif(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')) {
+      if (isset($_POST['loadAttendanceBtn'])) {
+        $postedBatch = escapeOutput($_POST['batch'] ?? null) ?? null;
 
-      $selectedBatch = escapeOutput($_GET['view'] ?? null) ?? null;
-      $requestedMonth = escapeOutput($_GET['month'] ?? date('Y-m')) ?? date('Y-m');
-      $monthDate = DateTime::createFromFormat('Y-m', $requestedMonth) ?: new DateTime('first day of this month');
-      $viewMonth = $monthDate->format('Y-m');
+        if ($postedBatch !== null) {
+          redirectTo('./?view=' . rawurlencode($postedBatch), 0);
+        }
 
-      $monthStart = (clone $monthDate)->modify('first day of this month');
-      $monthEnd = (clone $monthDate)->modify('last day of this month');
-      $displayMonthName = $monthDate->format('F Y');
+        $selectedBatch = escapeOutput($_GET['view'] ?? null) ?? null;
+        $requestedMonth = escapeOutput($_GET['month'] ?? date('Y-m')) ?? date('Y-m');
+        $monthDate = DateTime::createFromFormat('Y-m', $requestedMonth) ?: new DateTime('first day of this month');
+        $viewMonth = $monthDate->format('Y-m');
 
-      if ($selectedBatch !== null) {
-        $studentQuery = $db1->prepare(
-          "SELECT student_usercode, student_name
-          FROM student_details
-          WHERE student_batch_details = :batch
-          ORDER BY student_name ASC"
-        );
-        $studentQuery->bindValue(':batch', $selectedBatch, PDO::PARAM_STR);
-        $studentQuery->execute();
+        $monthStart = (clone $monthDate)->modify('first day of this month');
+        $monthEnd = (clone $monthDate)->modify('last day of this month');
+        $displayMonthName = $monthDate->format('F Y');
 
-        foreach ($studentQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
-          $usercode = trim((string) $row['student_usercode']);
-          $studentsInBatch[] = $usercode;
-          $studentNames[$usercode] = trim((string) ($row['student_name'] ?? ''));
+        if ($selectedBatch !== null) {
+          $studentQuery = $db1->prepare(
+            "SELECT student_usercode, student_name
+            FROM student_details
+            WHERE student_batch_details = :batch
+            ORDER BY student_name ASC"
+          );
+          $studentQuery->bindValue(':batch', $selectedBatch, PDO::PARAM_STR);
+          $studentQuery->execute();
+
+          foreach ($studentQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $usercode = trim((string) $row['student_usercode']);
+            $studentsInBatch[] = $usercode;
+            $studentNames[$usercode] = trim((string) ($row['student_name'] ?? ''));
+          }
+        }
+
+        if ($studentsInBatch !== []) {
+          $placeholders = implode(',', array_fill(0, count($studentsInBatch), '?'));
+          $attendanceQuery = $db2->prepare(
+            "SELECT student_usercode, student_attendance_issue_date
+            FROM attendance_records
+            WHERE student_usercode IN ($placeholders)
+              AND student_attendance_issue_date BETWEEN ? AND ?"
+          );
+          $attendanceQuery->execute(array_merge(
+            $studentsInBatch,
+            [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')]
+          ));
+
+          foreach ($attendanceQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $usercode = trim((string) $row['student_usercode']);
+            $date = trim((string) $row['student_attendance_issue_date']);
+            $attendanceCache[$viewMonth][$usercode][$date] = true;
+          }
+        }
+
+        $cursor = clone $monthStart;
+        while ($cursor <= $monthEnd) {
+          $allDates[] = $cursor->format('Y-m-d');
+          $cursor->modify('+1 day');
         }
       }
-
-      if ($studentsInBatch !== []) {
-        $placeholders = implode(',', array_fill(0, count($studentsInBatch), '?'));
-        $attendanceQuery = $db2->prepare(
-          "SELECT student_usercode, student_attendance_issue_date
-          FROM attendance_records
-          WHERE student_usercode IN ($placeholders)
-            AND student_attendance_issue_date BETWEEN ? AND ?"
-        );
-        $attendanceQuery->execute(array_merge(
-          $studentsInBatch,
-          [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')]
-        ));
-
-        foreach ($attendanceQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
-          $usercode = trim((string) $row['student_usercode']);
-          $date = trim((string) $row['student_attendance_issue_date']);
-          $attendanceCache[$viewMonth][$usercode][$date] = true;
-        }
-      }
-
-      $cursor = clone $monthStart;
-      while ($cursor <= $monthEnd) {
-        $allDates[] = $cursor->format('Y-m-d');
-        $cursor->modify('+1 day');
-      }
     }
   }
+
 ?>
 
 <?php // Headers

@@ -7,58 +7,66 @@
 ?>
 
 <?php // Backend for Student Registration
-  $registrationSuccessData = null;
+  if(checkForEquality(checkLoginStatus($db1), false, 'strict')) {
+    $registrationSuccessData = null;
 
-  function getRegistrationRequestIpAddress(): string {
-    $ipAddress = null;
+    function getRegistrationRequestIpAddress(): string {
+      $ipAddress = null;
 
-    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']))
-      $ipAddress = (string) $_SERVER['HTTP_CF_CONNECTING_IP'];
-    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
-      $ipAddress = trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
-    else
-      $ipAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+      if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']))
+        $ipAddress = (string) $_SERVER['HTTP_CF_CONNECTING_IP'];
+      elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
+        $ipAddress = trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+      else
+        $ipAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
-    return filter_var($ipAddress, FILTER_VALIDATE_IP) ? $ipAddress : 'Unknown';
-  }
-
-  function getApprovalRegistrationRateLimitStatus(PDO $db, string $ipAddress, int $maxIpRequests = 5, int $ipWindowSeconds = 3600): array {
-    if ($ipAddress === 'Unknown') {
-      return [
-        'limited'     => false,
-        'reason'      => null,
-        'retry_after' => 0,
-      ];
+      return filter_var($ipAddress, FILTER_VALIDATE_IP) ? $ipAddress : 'Unknown';
     }
 
-    try {
-      $ipWindowSeconds = max(60, $ipWindowSeconds);
-
-      $STMT_countRecentIpRequests = 'SELECT COUNT(*) AS recentRequestCount,
-                                            UNIX_TIMESTAMP(MIN(approval_rate_limiting_timestamp)) AS oldestRequestTimestamp
-                                     FROM approval_users
-                                     WHERE approval_IP_address = :approval_IP_address
-                                       AND approval_rate_limiting_timestamp >= DATE_SUB(NOW(), INTERVAL ' . (int) $ipWindowSeconds . ' SECOND)';
-
-      $countRecentIpRequests = $db->prepare($STMT_countRecentIpRequests);
-      $countRecentIpRequests->bindValue(':approval_IP_address', $ipAddress, PDO::PARAM_STR);
-      $countRecentIpRequests->execute();
-
-      $rateLimitRecord    = $countRecentIpRequests->fetch(PDO::FETCH_ASSOC) ?: [];
-      $recentRequestCount = (int) ($rateLimitRecord['recentRequestCount'] ?? 0);
-
-      if ($recentRequestCount >= $maxIpRequests) {
-        $oldestRequestTimestamp = (int) ($rateLimitRecord['oldestRequestTimestamp'] ?? time());
-        $retryAfter = max(1, ($oldestRequestTimestamp + $ipWindowSeconds) - time());
-
+    function getApprovalRegistrationRateLimitStatus(PDO $db, string $ipAddress, int $maxIpRequests = 5, int $ipWindowSeconds = 3600): array {
+      if ($ipAddress === 'Unknown') {
         return [
-          'limited'     => true,
-          'reason'      => 'ip',
-          'retry_after' => $retryAfter,
+          'limited'     => false,
+          'reason'      => null,
+          'retry_after' => 0,
         ];
       }
-    }
-    catch (PDOException) {
+
+      try {
+        $ipWindowSeconds = max(60, $ipWindowSeconds);
+
+        $STMT_countRecentIpRequests = 'SELECT COUNT(*) AS recentRequestCount,
+                                              UNIX_TIMESTAMP(MIN(approval_rate_limiting_timestamp)) AS oldestRequestTimestamp
+                                      FROM approval_users
+                                      WHERE approval_IP_address = :approval_IP_address
+                                        AND approval_rate_limiting_timestamp >= DATE_SUB(NOW(), INTERVAL ' . (int) $ipWindowSeconds . ' SECOND)';
+
+        $countRecentIpRequests = $db->prepare($STMT_countRecentIpRequests);
+        $countRecentIpRequests->bindValue(':approval_IP_address', $ipAddress, PDO::PARAM_STR);
+        $countRecentIpRequests->execute();
+
+        $rateLimitRecord    = $countRecentIpRequests->fetch(PDO::FETCH_ASSOC) ?: [];
+        $recentRequestCount = (int) ($rateLimitRecord['recentRequestCount'] ?? 0);
+
+        if ($recentRequestCount >= $maxIpRequests) {
+          $oldestRequestTimestamp = (int) ($rateLimitRecord['oldestRequestTimestamp'] ?? time());
+          $retryAfter = max(1, ($oldestRequestTimestamp + $ipWindowSeconds) - time());
+
+          return [
+            'limited'     => true,
+            'reason'      => 'ip',
+            'retry_after' => $retryAfter,
+          ];
+        }
+      }
+      catch (PDOException) {
+        return [
+          'limited'     => false,
+          'reason'      => null,
+          'retry_after' => 0,
+        ];
+      }
+
       return [
         'limited'     => false,
         'reason'      => null,
@@ -66,332 +74,326 @@
       ];
     }
 
-    return [
-      'limited'     => false,
-      'reason'      => null,
-      'retry_after' => 0,
-    ];
-  }
+    if (isset($_POST['registerStudentBtn'])) {
+      $enteredEmail             = escapeOutput($_POST['email']                      ?? null);
+      $enteredNewPassword       = escapeOutput($_POST['new_password']               ?? null);
+      $enteredName              = escapeOutput($_POST['student_name']               ?? null);
+      $enteredFatherName        = escapeOutput($_POST['father_name']                ?? null);
+      $enteredBatch             = escapeOutput($_POST['batchSelect']                ?? null);
+      $enteredConfirmPassword   = escapeOutput($_POST['confirm_password']           ?? null);
+      $optForEmailCommunication = escapeOutput($_POST['optForEmailCommunication']   ?? 0);
+      $csrfToken                = escapeOutput($_POST['csrf_token']                 ?? null);
+      $registrationIpAddress    = getRegistrationRequestIpAddress();
 
-  if (isset($_POST['registerStudentBtn'])) {
-    $enteredEmail             = escapeOutput($_POST['email']                      ?? null);
-    $enteredNewPassword       = escapeOutput($_POST['new_password']               ?? null);
-    $enteredName              = escapeOutput($_POST['student_name']               ?? null);
-    $enteredFatherName        = escapeOutput($_POST['father_name']                ?? null);
-    $enteredBatch             = escapeOutput($_POST['batchSelect']                ?? null);
-    $enteredConfirmPassword   = escapeOutput($_POST['confirm_password']           ?? null);
-    $optForEmailCommunication = escapeOutput($_POST['optForEmailCommunication']   ?? 0);
-    $csrfToken                = escapeOutput($_POST['csrf_token']                 ?? null);
-    $registrationIpAddress    = getRegistrationRequestIpAddress();
+      if (validateCsrfToken($csrfToken)) {
+        unsetCsrfToken();
 
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
-
-      if (isset($_POST['agreeTermsAndConditions'])) {
-        if (validateEmail($enteredEmail)
-              &&
-            validatePassword($enteredNewPassword)
-              &&
-            validatePassword($enteredConfirmPassword)
-              &&
-            checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
-
-          $registrationRateLimitStatus = getApprovalRegistrationRateLimitStatus($db1, $registrationIpAddress);
-
-          if (($registrationRateLimitStatus['limited'] ?? false) === true) {
-            $retryAfter        = max(1, (int) ($registrationRateLimitStatus['retry_after'] ?? 0));
-            $retryAfterMinutes = max(1, (int) ceil($retryAfter / 60));
-
-            setToast('Too many registration requests were submitted from this network. Please wait about ' . $retryAfterMinutes . ' minutes before trying again.', 'danger', 7000);
-
-            $emailValidationStatus = 'is-invalid';
-            $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                        <span class="material-symbols-outlined me-1">info</span>
-                                        Too many recent registration requests from this network.
-                                      </span>';
-          }
-          elseif (!checkUserRecord($db1, 'approval_users',  ['approval_email' => $enteredEmail])
+        if (isset($_POST['agreeTermsAndConditions'])) {
+          if (validateEmail($enteredEmail)
                 &&
-                  !checkUserRecord($db1, 'student_details', ['student_email'   => $enteredEmail])) {
+              validatePassword($enteredNewPassword)
+                &&
+              validatePassword($enteredConfirmPassword)
+                &&
+              checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
 
-            if (checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
-              $hashedPassword    = password_hash($enteredNewPassword, PASSWORD_DEFAULT);
-              $approvalTimestamp = getCurrentTimestamp();
-              $generatedCode     = generateReferenceCode();
+            $registrationRateLimitStatus = getApprovalRegistrationRateLimitStatus($db1, $registrationIpAddress);
 
-              $currentAttempt = 0;
-              $maxRetries     = 3;
+            if (($registrationRateLimitStatus['limited'] ?? false) === true) {
+              $retryAfter        = max(1, (int) ($registrationRateLimitStatus['retry_after'] ?? 0));
+              $retryAfterMinutes = max(1, (int) ceil($retryAfter / 60));
 
-              while ($currentAttempt < $maxRetries) {
-                try {
-                  $STMT_logApprovalUser = 'INSERT INTO approval_users
-                                            (approval_email, approval_password, approval_code, approval_name, approval_father_name, approval_batch_details, approval_IP_address, approval_timestamp)
-                                           VALUES
-                                            (:approval_email, :approval_password, :approval_code, :approval_name, :approval_father_name, :approval_batch_details, :approval_IP_address, :approval_timestamp)';
-                  $logApprovalUser = $db1->prepare($STMT_logApprovalUser);
-                  $logApprovalUser->bindValue(':approval_email',          $enteredEmail,         PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_password',       $hashedPassword,       PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_code',           $generatedCode,        PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_name',           $enteredName,          PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_father_name',    $enteredFatherName,    PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_batch_details',  $enteredBatch,         PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_IP_address',     $registrationIpAddress,PDO::PARAM_STR);
-                  $logApprovalUser->bindValue(':approval_timestamp',      $approvalTimestamp,    PDO::PARAM_STR);
-                  $logApprovalUser->execute();
-                  break;
-                }
-                catch (PDOException $ex) {
-                  if (!isRetryablePdoException($ex)) {
-                    setToast('Error occurred while Registering User. Contact Admin.', 'danger', 7000);
-                    logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error occurred while Registering Student: ' . $ex->getMessage());
-                    exit;
+              setToast('Too many registration requests were submitted from this network. Please wait about ' . $retryAfterMinutes . ' minutes before trying again.', 'danger', 7000);
+
+              $emailValidationStatus = 'is-invalid';
+              $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                          <span class="material-symbols-outlined me-1">info</span>
+                                          Too many recent registration requests from this network.
+                                        </span>';
+            }
+            elseif (!checkUserRecord($db1, 'approval_users',  ['approval_email' => $enteredEmail])
+                  &&
+                    !checkUserRecord($db1, 'student_details', ['student_email'   => $enteredEmail])) {
+
+              if (checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
+                $hashedPassword    = password_hash($enteredNewPassword, PASSWORD_DEFAULT);
+                $approvalTimestamp = getCurrentTimestamp();
+                $generatedCode     = generateReferenceCode();
+
+                $currentAttempt = 0;
+                $maxRetries     = 3;
+
+                while ($currentAttempt < $maxRetries) {
+                  try {
+                    $STMT_logApprovalUser = 'INSERT INTO approval_users
+                                              (approval_email, approval_password, approval_code, approval_name, approval_father_name, approval_batch_details, approval_IP_address, approval_timestamp)
+                                            VALUES
+                                              (:approval_email, :approval_password, :approval_code, :approval_name, :approval_father_name, :approval_batch_details, :approval_IP_address, :approval_timestamp)';
+                    $logApprovalUser = $db1->prepare($STMT_logApprovalUser);
+                    $logApprovalUser->bindValue(':approval_email',          $enteredEmail,         PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_password',       $hashedPassword,       PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_code',           $generatedCode,        PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_name',           $enteredName,          PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_father_name',    $enteredFatherName,    PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_batch_details',  $enteredBatch,         PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_IP_address',     $registrationIpAddress,PDO::PARAM_STR);
+                    $logApprovalUser->bindValue(':approval_timestamp',      $approvalTimestamp,    PDO::PARAM_STR);
+                    $logApprovalUser->execute();
+                    break;
                   }
+                  catch (PDOException $ex) {
+                    if (!isRetryablePdoException($ex)) {
+                      setToast('Error occurred while Registering User. Contact Admin.', 'danger', 7000);
+                      logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error occurred while Registering Student: ' . $ex->getMessage());
+                      exit;
+                    }
 
-                  $currentAttempt++;
+                    $currentAttempt++;
+                    sleep(5);
+                  }
+                }
+                if ($currentAttempt >= $maxRetries) {
+                  setToast('Error occurred while Registering User. Contact Admin.', 'danger', 7000);
+                  exit;
+                }
+
+                $displayEmail        = htmlspecialchars($enteredEmail,    ENT_QUOTES, 'UTF-8');
+                $displayGeneratedCode = htmlspecialchars($generatedCode,  ENT_QUOTES, 'UTF-8');
+
+                $mail = createConfiguredMailer();
+                $mail->addAddress($enteredEmail);
+                $mail->isHTML(true);
+                $mail->Subject = 'Account Creation Successful | Career Institute';
+                $mail->Body    = '
+                  <!DOCTYPE html>
+                  <html lang="en">
+                  <head>
+                    <meta charset="UTF-8">
+                    <title>Account Activation</title>
+                  </head>
+                  <body style="margin:0; padding:0; background-color:#f4f4f4;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                          style="border-collapse:collapse; background-color:#f4f4f4;">
+                      <tr>
+                        <td align="center" style="padding:20px 10px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                                style="max-width:600px; border-collapse:collapse; background-color:#ffffff;">
+
+                            <tr>
+                              <td align="center" style="background-color:#007BFF; padding:20px;">
+                                <h1 style="margin:0; font-family:Arial, sans-serif; font-size:24px; line-height:1.4; color:#ffffff;">
+                                  Career Institute
+                                </h1>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style="padding:25px 25px 10px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                <h2 style="margin:0 0 15px 0; font-size:20px; color:#007BFF; line-height:1.4;">
+                                  Welcome, ' . $displayEmail . '!
+                                </h2>
+                                <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                  Thank you for creating an account with Career Institute.
+                                </p>
+                                <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                  To activate your account, please reach out to us at the office and provide the activation code below.
+                                </p>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td align="center" style="padding:10px 25px 20px 25px;">
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                  <tr>
+                                    <td align="center" bgcolor="#007BFF" style="border-radius:4px;">
+                                      <span style="display:inline-block;
+                                                  padding:10px 24px;
+                                                  font-family:Arial, sans-serif;
+                                                  font-size:14px;
+                                                  font-weight:bold;
+                                                  color:#ffffff;
+                                                  border-radius:4px;">
+                                        ' . $displayGeneratedCode . '
+                                      </span>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style="padding:0 25px 20px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                  If you did not create an account with Career Institute, you can safely ignore this email.
+                                  If you have any concerns, please contact us at
+                                  <a href="mailto:careerinstitutepatna@gmail.com" style="color:#007BFF; text-decoration:none;">
+                                    careerinstitutepatna@gmail.com
+                                  </a>
+                                  or visit our
+                                  <a href="https://careerinstitute.co.in/servicePages/contactUs/"
+                                    style="color:#007BFF; text-decoration:none;">Contact Us</a> page.
+                                </p>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style="padding:0 25px 25px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;">Best regards,</p>
+                                <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;"><strong>The Career Institute Team</strong></p>
+                                <p style="margin:0; font-size:13px; line-height:1.6;"><em>Your Future, Our Commitment.</em></p>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td align="center" style="background-color:#f4f4f4; padding:15px 20px;
+                                          font-family:Arial, sans-serif; color:#888888;">
+                                <p style="margin:0 0 6px 0; font-size:11px; line-height:1.6;">
+                                  You are receiving this email because your email address was used to create an account at
+                                  <a href="https://careerinstitute.co.in" style="color:#007BFF; text-decoration:none;">Career Institute</a>.
+                                </p>
+                                <p style="margin:0; font-size:11px; line-height:1.6;">
+                                  K-180 Shashi Complex (2nd Floor), Kali Mandir Road, Kankarbagh, Patna 800020
+                                </p>
+                              </td>
+                            </tr>
+
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </body>
+                  </html>
+                ';
+                $mail->AltBody = "Welcome to Career Institute!\n\nYour account creation request was submitted successfully.\nReference code: " . $generatedCode . "\n\nPlease keep this code for the approval process.";
+
+                $activationEmailSent = false;
+                $emailAttempt        = 0;
+                $maxEmailRetries     = 3;
+
+                while ($emailAttempt < $maxEmailRetries) {
+                  try {
+                    if ($mail->send()) {
+                      $activationEmailSent = true;
+                      break;
+                    }
+                  }
+                  catch (Exception $ex) {
+                    if (!isRetryableSmtpFailure($mail)) {
+                      logAppError($db2, null, getCurrentURL(), 'MAIL', 'Error occurred while Sending Activation Mail: ' . $mail->ErrorInfo);
+                      break;
+                    }
+                  }
+                  $emailAttempt++;
                   sleep(5);
                 }
-              }
-              if ($currentAttempt >= $maxRetries) {
-                setToast('Error occurred while Registering User. Contact Admin.', 'danger', 7000);
-                exit;
-              }
 
-              $displayEmail        = htmlspecialchars($enteredEmail,    ENT_QUOTES, 'UTF-8');
-              $displayGeneratedCode = htmlspecialchars($generatedCode,  ENT_QUOTES, 'UTF-8');
+                $registrationSuccessData = [
+                  'email'          => $enteredEmail,
+                  'name'           => $enteredName,
+                  'batch'          => $enteredBatch,
+                  'generated_code' => $generatedCode,
+                  'created_at'     => $approvalTimestamp, // display-only, never written to DB
+                  'email_sent'     => $activationEmailSent,
+                ];
 
-              $mail = createConfiguredMailer();
-              $mail->addAddress($enteredEmail);
-              $mail->isHTML(true);
-              $mail->Subject = 'Account Creation Successful | Career Institute';
-              $mail->Body    = '
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                  <meta charset="UTF-8">
-                  <title>Account Activation</title>
-                </head>
-                <body style="margin:0; padding:0; background-color:#f4f4f4;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-                         style="border-collapse:collapse; background-color:#f4f4f4;">
-                    <tr>
-                      <td align="center" style="padding:20px 10px;">
-                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-                               style="max-width:600px; border-collapse:collapse; background-color:#ffffff;">
-
-                          <tr>
-                            <td align="center" style="background-color:#007BFF; padding:20px;">
-                              <h1 style="margin:0; font-family:Arial, sans-serif; font-size:24px; line-height:1.4; color:#ffffff;">
-                                Career Institute
-                              </h1>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:25px 25px 10px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <h2 style="margin:0 0 15px 0; font-size:20px; color:#007BFF; line-height:1.4;">
-                                Welcome, ' . $displayEmail . '!
-                              </h2>
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                Thank you for creating an account with Career Institute.
-                              </p>
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                To activate your account, please reach out to us at the office and provide the activation code below.
-                              </p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td align="center" style="padding:10px 25px 20px 25px;">
-                              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                <tr>
-                                  <td align="center" bgcolor="#007BFF" style="border-radius:4px;">
-                                    <span style="display:inline-block;
-                                                 padding:10px 24px;
-                                                 font-family:Arial, sans-serif;
-                                                 font-size:14px;
-                                                 font-weight:bold;
-                                                 color:#ffffff;
-                                                 border-radius:4px;">
-                                      ' . $displayGeneratedCode . '
-                                    </span>
-                                  </td>
-                                </tr>
-                              </table>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:0 25px 20px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                If you did not create an account with Career Institute, you can safely ignore this email.
-                                If you have any concerns, please contact us at
-                                <a href="mailto:careerinstitutepatna@gmail.com" style="color:#007BFF; text-decoration:none;">
-                                  careerinstitutepatna@gmail.com
-                                </a>
-                                or visit our
-                                <a href="https://careerinstitute.co.in/servicePages/contactUs/"
-                                   style="color:#007BFF; text-decoration:none;">Contact Us</a> page.
-                              </p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:0 25px 25px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;">Best regards,</p>
-                              <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;"><strong>The Career Institute Team</strong></p>
-                              <p style="margin:0; font-size:13px; line-height:1.6;"><em>Your Future, Our Commitment.</em></p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td align="center" style="background-color:#f4f4f4; padding:15px 20px;
-                                        font-family:Arial, sans-serif; color:#888888;">
-                              <p style="margin:0 0 6px 0; font-size:11px; line-height:1.6;">
-                                You are receiving this email because your email address was used to create an account at
-                                <a href="https://careerinstitute.co.in" style="color:#007BFF; text-decoration:none;">Career Institute</a>.
-                              </p>
-                              <p style="margin:0; font-size:11px; line-height:1.6;">
-                                K-180 Shashi Complex (2nd Floor), Kali Mandir Road, Kankarbagh, Patna 800020
-                              </p>
-                            </td>
-                          </tr>
-
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </body>
-                </html>
-              ';
-              $mail->AltBody = "Welcome to Career Institute!\n\nYour account creation request was submitted successfully.\nReference code: " . $generatedCode . "\n\nPlease keep this code for the approval process.";
-
-              $activationEmailSent = false;
-              $emailAttempt        = 0;
-              $maxEmailRetries     = 3;
-
-              while ($emailAttempt < $maxEmailRetries) {
-                try {
-                  if ($mail->send()) {
-                    $activationEmailSent = true;
-                    break;
-                  }
+                if ($activationEmailSent) {
+                  setToast('Account Details Submitted Successfully. Waiting for Approval from Admin.', 'success', 15000);
+                } else {
+                  setToast('Account Details Submitted Successfully. Keep the displayed code safely.', 'warning', 15000);
                 }
-                catch (Exception $ex) {
-                  if (!isRetryableSmtpFailure($mail)) {
-                    logAppError($db2, null, getCurrentURL(), 'MAIL', 'Error occurred while Sending Activation Mail: ' . $mail->ErrorInfo);
-                    break;
-                  }
-                }
-                $emailAttempt++;
-                sleep(5);
               }
+              else {
+                setToast('New Password and Confirm Password do not match.', 'danger', 7000);
 
-              $registrationSuccessData = [
-                'email'          => $enteredEmail,
-                'name'           => $enteredName,
-                'batch'          => $enteredBatch,
-                'generated_code' => $generatedCode,
-                'created_at'     => $approvalTimestamp, // display-only, never written to DB
-                'email_sent'     => $activationEmailSent,
-              ];
-
-              if ($activationEmailSent) {
-                setToast('Account Details Submitted Successfully. Waiting for Approval from Admin.', 'success', 15000);
-              } else {
-                setToast('Account Details Submitted Successfully. Keep the displayed code safely.', 'warning', 15000);
+                $newPasswordValidationStatus     = 'is-invalid';
+                $confirmPasswordValidationStatus = 'is-invalid';
+                $newPasswordHelpText             = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                      <span class="material-symbols-outlined me-1">info</span>
+                                                      Entered Passwords do not match. Please enter the details carefully!
+                                                    </span>';
+                $confirmPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                      <span class="material-symbols-outlined me-1">info</span>
+                                                      Entered Passwords do not match. Please enter the details carefully!
+                                                    </span>';
               }
             }
             else {
-              setToast('New Password and Confirm Password do not match.', 'danger', 7000);
+              if (checkUserRecord($db1, 'approval_users', ['approval_email' => $enteredEmail])) {
+                setToast('This E-mail was recently used for account creation. Try another one.', 'danger', 7000);
 
+                $emailValidationStatus = 'is-invalid';
+                $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                            <span class="material-symbols-outlined me-1">info</span>
+                                            This E-mail was recently used for account creation. Contact Office.
+                                          </span>';
+              }
+              elseif (checkUserRecord($db1, 'student_details', ['student_email' => $enteredEmail])) {
+                setToast('The E-mail entered is already associated with another account. Try another one.', 'danger', 7000);
+
+                $emailValidationStatus = 'is-invalid';
+                $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                            <span class="material-symbols-outlined me-1">info</span>
+                                            The E-mail entered is already associated with another account. Try another one.
+                                          </span>';
+              }
+            }
+          }
+          else {
+            setToast('One or more Input Fields were wrongly filled.', 'danger', 7000);
+
+            if (!validateEmail($enteredEmail)) {
+              $emailValidationStatus = 'is-invalid';
+              $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                          <span class="material-symbols-outlined me-1">info</span>
+                                          E-Mail entered is not valid.
+                                        </span>';
+            }
+            elseif (!validatePassword($enteredNewPassword) && !validatePassword($enteredConfirmPassword)) {
+              $newPasswordValidationStatus     = 'is-invalid';
+              $confirmPasswordValidationStatus = 'is-invalid';
+              $newPasswordHelpText             = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                    <span class="material-symbols-outlined me-1">info</span>
+                                                    Password must be at least 8 characters with 1 symbol and 1 numeral.
+                                                  </span>';
+              $confirmPasswordHelpText         = $newPasswordHelpText;
+            }
+            elseif (!validatePassword($enteredNewPassword)) {
+              $newPasswordValidationStatus = 'is-invalid';
+              $newPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                <span class="material-symbols-outlined me-1">info</span>
+                                                Password must be at least 8 characters with 1 symbol and 1 numeral.
+                                              </span>';
+            }
+            elseif (!validatePassword($enteredConfirmPassword)) {
+              $confirmPasswordValidationStatus = 'is-invalid';
+              $confirmPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                    <span class="material-symbols-outlined me-1">info</span>
+                                                    Password must be at least 8 characters with 1 symbol and 1 numeral.
+                                                  </span>';
+            }
+            elseif (!checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
               $newPasswordValidationStatus     = 'is-invalid';
               $confirmPasswordValidationStatus = 'is-invalid';
               $newPasswordHelpText             = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
                                                     <span class="material-symbols-outlined me-1">info</span>
                                                     Entered Passwords do not match. Please enter the details carefully!
                                                   </span>';
-              $confirmPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                                    <span class="material-symbols-outlined me-1">info</span>
-                                                    Entered Passwords do not match. Please enter the details carefully!
-                                                  </span>';
-            }
-          }
-          else {
-            if (checkUserRecord($db1, 'approval_users', ['approval_email' => $enteredEmail])) {
-              setToast('This E-mail was recently used for account creation. Try another one.', 'danger', 7000);
-
-              $emailValidationStatus = 'is-invalid';
-              $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                          <span class="material-symbols-outlined me-1">info</span>
-                                          This E-mail was recently used for account creation. Contact Office.
-                                        </span>';
-            }
-            elseif (checkUserRecord($db1, 'student_details', ['student_email' => $enteredEmail])) {
-              setToast('The E-mail entered is already associated with another account. Try another one.', 'danger', 7000);
-
-              $emailValidationStatus = 'is-invalid';
-              $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                          <span class="material-symbols-outlined me-1">info</span>
-                                          The E-mail entered is already associated with another account. Try another one.
-                                        </span>';
+              $confirmPasswordHelpText         = $newPasswordHelpText;
             }
           }
         }
         else {
-          setToast('One or more Input Fields were wrongly filled.', 'danger', 7000);
+          setToast('Agree to Terms and Conditions before proceeding ahead.', 'danger', 7000);
 
-          if (!validateEmail($enteredEmail)) {
-            $emailValidationStatus = 'is-invalid';
-            $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                        <span class="material-symbols-outlined me-1">info</span>
-                                        E-Mail entered is not valid.
-                                      </span>';
-          }
-          elseif (!validatePassword($enteredNewPassword) && !validatePassword($enteredConfirmPassword)) {
-            $newPasswordValidationStatus     = 'is-invalid';
-            $confirmPasswordValidationStatus = 'is-invalid';
-            $newPasswordHelpText             = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                                  <span class="material-symbols-outlined me-1">info</span>
-                                                  Password must be at least 8 characters with 1 symbol and 1 numeral.
-                                                </span>';
-            $confirmPasswordHelpText         = $newPasswordHelpText;
-          }
-          elseif (!validatePassword($enteredNewPassword)) {
-            $newPasswordValidationStatus = 'is-invalid';
-            $newPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                              <span class="material-symbols-outlined me-1">info</span>
-                                              Password must be at least 8 characters with 1 symbol and 1 numeral.
-                                            </span>';
-          }
-          elseif (!validatePassword($enteredConfirmPassword)) {
-            $confirmPasswordValidationStatus = 'is-invalid';
-            $confirmPasswordHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                                  <span class="material-symbols-outlined me-1">info</span>
-                                                  Password must be at least 8 characters with 1 symbol and 1 numeral.
-                                                </span>';
-          }
-          elseif (!checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
-            $newPasswordValidationStatus     = 'is-invalid';
-            $confirmPasswordValidationStatus = 'is-invalid';
-            $newPasswordHelpText             = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                                  <span class="material-symbols-outlined me-1">info</span>
-                                                  Entered Passwords do not match. Please enter the details carefully!
-                                                </span>';
-            $confirmPasswordHelpText         = $newPasswordHelpText;
-          }
+          $agreeTermsAndConditionsValidationStatus = 'is-invalid';
+          $agreeTermsAndConditionsHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                                        <span class="material-symbols-outlined me-1">info</span>
+                                                        Accept to Terms and Conditions before proceeding.
+                                                      </span>';
         }
       }
-      else {
-        setToast('Agree to Terms and Conditions before proceeding ahead.', 'danger', 7000);
-
-        $agreeTermsAndConditionsValidationStatus = 'is-invalid';
-        $agreeTermsAndConditionsHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                                      <span class="material-symbols-outlined me-1">info</span>
-                                                      Accept to Terms and Conditions before proceeding.
-                                                    </span>';
-      }
+      else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
   }
 ?>
 

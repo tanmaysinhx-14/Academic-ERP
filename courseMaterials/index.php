@@ -8,6 +8,12 @@
   extract($bootstrapData, EXTR_OVERWRITE);
 ?>
 
+<?php // Backend for Course Materials 
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    ; // Do Nothing
+  }
+?>
+
 <?php // Headers 
   $page_title = "Course Materials | careerinstitute.co.in";
   

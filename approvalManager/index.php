@@ -179,11 +179,7 @@
         $approvalRecords = [];
       }
     }
-
-    else redirectTo('../dashboard/', 3);
   }
-  else redirectTo('../login/', 3);
-
 ?>
 
 <?php // Headers

@@ -9,253 +9,257 @@
 ?>
 
 <?php // Backend for Profile 
-  $isProfileEditable = getSecondsPassed($userRecord['student_profile_updating_timestamp']) >= 86400;
-  $isBatchEditable = isEligibleForBatchChange($userRecord['student_batch_updating_timestamp']);
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
+      $isProfileEditable = getSecondsPassed($userRecord['student_profile_updating_timestamp']) >= 86400;
+      $isBatchEditable = isEligibleForBatchChange($userRecord['student_batch_updating_timestamp']);
 
-  if (isset($_POST['saveUpdatedUsernameBtn'])) {
-    $updatedUsername = escapeOutput($_POST['updatedUsername']) ?? null;
-    $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
-    if(validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+      if (isset($_POST['saveUpdatedUsernameBtn'])) {
+        $updatedUsername = escapeOutput($_POST['updatedUsername']) ?? null;
+        $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
+        if(validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
 
-      if (validateUsername($updatedUsername)) { // Username Validation Successful
-        $usernameCheckStatus = checkUserRecord($db1, 'student_details', ['student_username' => $updatedUsername]);
+          if (validateUsername($updatedUsername)) { // Username Validation Successful
+            $usernameCheckStatus = checkUserRecord($db1, 'student_details', ['student_username' => $updatedUsername]);
 
-        if(checkForEquality($usernameCheckStatus, true, 'strict')) { // Username Already Exists
-          setToast('This Username has already been taken. Please try another one.', 'danger', 7000);
-        }
-        else { // Unique Username Found
-          $currentAttemptForInsertingStudentUsername = 0;
-          $maxRetriesForInsertingStudentUsername = 3;
-          while ($currentAttemptForInsertingStudentUsername < $maxRetriesForInsertingStudentUsername) {
-            try {
-              $db1->beginTransaction();
-
-              $STMT_updateUsernameInStudentDetails = 'UPDATE student_details 
-                                                      SET student_username = :student_username
-                                                      WHERE student_usercode = :student_usercode';
-              $insert_usernameInStudentDetails = $db1->prepare($STMT_updateUsernameInStudentDetails);
-
-              $insert_usernameInStudentDetails->bindValue(':student_username', $updatedUsername, PDO::PARAM_STR);
-              $insert_usernameInStudentDetails->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-
-              $insert_usernameInStudentDetails->execute();
-
-
-
-              $STMT_updateUsernameInStudentConfigurations = 'UPDATE student_configurations 
-                                                             SET student_has_updated_username = :student_has_updated_username
-                                                             WHERE student_usercode = :student_usercode';
-              $insert_usernameInStudentConfigurations = $db1->prepare($STMT_updateUsernameInStudentConfigurations);
-
-              $insert_usernameInStudentConfigurations->bindValue(':student_has_updated_username', 1, PDO::PARAM_BOOL);
-              $insert_usernameInStudentConfigurations->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-
-              $insert_usernameInStudentConfigurations->execute();
-
-              if($db1->commit()) {
-                setToast('Username Updated Successfully. Changes will reflect soon.', 'success', 7000);
-                redirectTo('./', 0); // Refresh the page
-                break; // Success
-              }
+            if(checkForEquality($usernameCheckStatus, true, 'strict')) { // Username Already Exists
+              setToast('This Username has already been taken. Please try another one.', 'danger', 7000);
             }
-            catch(PDOException $ex) {
-              if ($db1->inTransaction()) {
-                $db1->rollBack();
-              }
+            else { // Unique Username Found
+              $currentAttemptForInsertingStudentUsername = 0;
+              $maxRetriesForInsertingStudentUsername = 3;
+              while ($currentAttemptForInsertingStudentUsername < $maxRetriesForInsertingStudentUsername) {
+                try {
+                  $db1->beginTransaction();
 
-              if(!isRetryablePdoException($ex)) {
+                  $STMT_updateUsernameInStudentDetails = 'UPDATE student_details 
+                                                          SET student_username = :student_username
+                                                          WHERE student_usercode = :student_usercode';
+                  $insert_usernameInStudentDetails = $db1->prepare($STMT_updateUsernameInStudentDetails);
+
+                  $insert_usernameInStudentDetails->bindValue(':student_username', $updatedUsername, PDO::PARAM_STR);
+                  $insert_usernameInStudentDetails->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+
+                  $insert_usernameInStudentDetails->execute();
+
+
+
+                  $STMT_updateUsernameInStudentConfigurations = 'UPDATE student_configurations 
+                                                                SET student_has_updated_username = :student_has_updated_username
+                                                                WHERE student_usercode = :student_usercode';
+                  $insert_usernameInStudentConfigurations = $db1->prepare($STMT_updateUsernameInStudentConfigurations);
+
+                  $insert_usernameInStudentConfigurations->bindValue(':student_has_updated_username', 1, PDO::PARAM_BOOL);
+                  $insert_usernameInStudentConfigurations->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+
+                  $insert_usernameInStudentConfigurations->execute();
+
+                  if($db1->commit()) {
+                    setToast('Username Updated Successfully. Changes will reflect soon.', 'success', 7000);
+                    redirectTo('./', 0); // Refresh the page
+                    break; // Success
+                  }
+                }
+                catch(PDOException $ex) {
+                  if ($db1->inTransaction()) {
+                    $db1->rollBack();
+                  }
+
+                  if(!isRetryablePdoException($ex)) {
+                    setToast('Error occured while Updating Username. Contact Admin.', 'danger', 7000);
+
+                    logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Username: ' . $ex->getMessage());
+
+                    break;
+                  }
+                  $currentAttemptForInsertingStudentUsername++;
+                  sleep(5);
+                }
+              }
+              if ($currentAttemptForInsertingStudentUsername >= $maxRetriesForInsertingStudentUsername) {
                 setToast('Error occured while Updating Username. Contact Admin.', 'danger', 7000);
-
-                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Username: ' . $ex->getMessage());
-
-                break;
               }
-              $currentAttemptForInsertingStudentUsername++;
-              sleep(5);
             }
           }
-          if ($currentAttemptForInsertingStudentUsername >= $maxRetriesForInsertingStudentUsername) {
-            setToast('Error occured while Updating Username. Contact Admin.', 'danger', 7000);
+          else { // Username Validation Failed
+            setToast('Enter Username according to the Instructions provided.', 'danger', 7000);
           }
         }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
-      else { // Username Validation Failed
-        setToast('Enter Username according to the Instructions provided.', 'danger', 7000);
+
+      elseif (isset($_POST['saveAdditionalDetails'])) {
+        $updatedFatherName   = escapeOutput($_POST['fatherName']);
+        $updatedGuardianName = escapeOutput($_POST['guardianName']);
+        $batchDetails        = escapeOutput($_POST['batchDetails']);
+        $updatedSchoolName   = escapeOutput($_POST['schoolName']);
+        $updatedStudentBio   = escapeOutput($_POST['studentBio']);
+
+        $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
+        
+        if(validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
+
+          if($isProfileEditable) {
+            if (validateRequiredFormFields([$updatedFatherName, $updatedGuardianName, $batchDetails, $updatedSchoolName])) {
+              $currentTimestamp = getCurrentTimestamp();
+
+              $currentAttemptForUpdatingStudentDetails = 0;
+              $maxRetriesForUpdatingStudentDetails = 3;
+              while ($currentAttemptForUpdatingStudentDetails < $maxRetriesForUpdatingStudentDetails) {
+                try {
+                  $db1->beginTransaction();
+
+                  if ($isBatchEditable) { // Student Eligible for Batch Change
+                    $STMT_updateStudentDetails = 'UPDATE student_details 
+                                                  SET student_father_name       = :student_father_name,
+                                                      student_guardian_name     = :student_guardian_name,
+                                                      student_batch_details     = :student_batch_details,
+                                                      student_school_name       = :student_school_name,
+                                                      student_bio              = :student_bio
+                                                  WHERE student_usercode = :student_usercode';
+                  }
+                  else { // Student not eligible for Batch Change
+                    $STMT_updateStudentDetails = 'UPDATE student_details 
+                                                  SET student_father_name       = :student_father_name,
+                                                      student_guardian_name     = :student_guardian_name,
+                                                      student_school_name       = :student_school_name,
+                                                      student_bio              = :student_bio
+                                                  WHERE student_usercode = :student_usercode';
+                  }
+
+                  
+                  $update_studentDetails = $db1->prepare($STMT_updateStudentDetails);
+
+                  $update_studentDetails->bindValue(':student_father_name',     $updatedFatherName,    PDO::PARAM_STR);
+                  $update_studentDetails->bindValue(':student_guardian_name',   $updatedGuardianName,  PDO::PARAM_STR);
+                  if ($isBatchEditable) { // Student Eligible for Batch Change
+                    $update_studentDetails->bindValue(':student_batch_details', $batchDetails,         PDO::PARAM_STR);
+                  }
+                  $update_studentDetails->bindValue(':student_school_name',     $updatedSchoolName,    PDO::PARAM_STR);
+                  $update_studentDetails->bindValue(':student_bio',             $updatedStudentBio,    PDO::PARAM_STR);
+                  $update_studentDetails->bindValue(':student_usercode',        $_SESSION['usercode'], PDO::PARAM_STR);
+
+                  $update_studentDetails->execute();
+
+
+                  // User Profile has been updated before. No need to change configurations.
+                  if (checkForEquality($userRecord['student_has_updated_account_profile'], 0, 'strict')) {
+                    $STMT_updateStudentConfiguration = 'UPDATE student_configurations 
+                                                        SET student_has_updated_account_profile = :student_has_updated_account_profile
+                                                        WHERE student_usercode = :student_usercode';
+                    $update_studentConfiguration = $db1->prepare($STMT_updateStudentConfiguration);
+
+                    $update_studentConfiguration->bindValue(':student_has_updated_account_profile', 1, PDO::PARAM_INT);
+                    $update_studentConfiguration->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+
+                    $update_studentConfiguration->execute();
+                  }
+
+
+
+                  $STMT_uploadProfileUpdationTimestamp = 'UPDATE student_timestamps
+                                                          SET student_profile_updating_timestamp = :student_profile_updating_timestamp
+                                                          WHERE student_usercode = :student_usercode';
+                  $uploadProfileUpdationTimestamp = $db1->prepare($STMT_uploadProfileUpdationTimestamp);
+
+                  $uploadProfileUpdationTimestamp->bindValue(':student_profile_updating_timestamp', $currentTimestamp, PDO::PARAM_STR);
+                  $uploadProfileUpdationTimestamp->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+
+                  $uploadProfileUpdationTimestamp->execute();
+
+
+                  if ($db1->commit()) { // Success
+                    setToast('Profile Details updated successfully.', 'success', 7000);
+
+                    redirectTo('./', 0);
+                    break;
+                  }
+                }
+                catch (PDOException $ex) {
+                  if($db1->inTransaction()) {
+                    $db1->rollBack();
+                  }
+
+                  if(!isRetryablePdoException($ex)) {
+                    setToast('Error occured while Updating Additional Details. Contact Admin.', 'danger', 7000);
+
+                    logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Additional Details: ' . $ex->getMessage());
+
+                    break;
+                  }
+                  $currentAttemptForUpdatingStudentDetails++;
+                  sleep(5);
+                }
+              }
+              if($currentAttemptForUpdatingStudentDetails >= $maxRetriesForUpdatingStudentDetails) {
+                setToast('Error occured while Updating Additional Details. Contact Admin.', 'danger', 7000);
+              }
+            }
+            else { // Required Fields are empty
+              setToast('One or more required fields are empty!', 'danger', 7000);
+            }
+          }
+          else { // Profile Change Cooldown
+            setToast('Profile Details can be changed again after 1 day!', 'danger', 7000);
+          }
+        }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
-    }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
 
-  elseif (isset($_POST['saveAdditionalDetails'])) {
-    $updatedFatherName   = escapeOutput($_POST['fatherName']);
-    $updatedGuardianName = escapeOutput($_POST['guardianName']);
-    $batchDetails        = escapeOutput($_POST['batchDetails']);
-    $updatedSchoolName   = escapeOutput($_POST['schoolName']);
-    $updatedStudentBio   = escapeOutput($_POST['studentBio']);
+      elseif (isset($_POST['saveConfigurations'])) {
+        $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
 
-    $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
-    
-    if(validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+        if(validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
 
-      if($isProfileEditable) {
-        if (validateRequiredFormFields([$updatedFatherName, $updatedGuardianName, $batchDetails, $updatedSchoolName])) {
-          $currentTimestamp = getCurrentTimestamp();
+          $STMT_updateStudentEmailPreference = 'UPDATE student_configurations
+                                                SET student_has_opted_email_communication = :student_has_opted_email_communication
+                                                WHERE student_usercode = :student_usercode
+                                                LIMIT 1';
 
-          $currentAttemptForUpdatingStudentDetails = 0;
-          $maxRetriesForUpdatingStudentDetails = 3;
-          while ($currentAttemptForUpdatingStudentDetails < $maxRetriesForUpdatingStudentDetails) {
+          $updateStudentEmailPreference = $db1->prepare($STMT_updateStudentEmailPreference);
+
+          if(isset($_POST['emailConfiguration'])) {
+            $updateStudentEmailPreference->bindValue(':student_has_opted_email_communication', 1, PDO::PARAM_INT);
+          }
+          else {
+            $updateStudentEmailPreference->bindValue(':student_has_opted_email_communication', 0, PDO::PARAM_INT);
+          }
+          
+          $updateStudentEmailPreference->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
+
+          $currentAttemptForUpdatingEmailPreference = 0;
+          $maxRetriesForUpdatingEmailPreference = 3;
+
+          while($currentAttemptForUpdatingEmailPreference < $maxRetriesForUpdatingEmailPreference) {
             try {
-              $db1->beginTransaction();
-
-              if ($isBatchEditable) { // Student Eligible for Batch Change
-                $STMT_updateStudentDetails = 'UPDATE student_details 
-                                              SET student_father_name       = :student_father_name,
-                                                  student_guardian_name     = :student_guardian_name,
-                                                  student_batch_details     = :student_batch_details,
-                                                  student_school_name       = :student_school_name,
-                                                  student_bio              = :student_bio
-                                              WHERE student_usercode = :student_usercode';
-              }
-              else { // Student not eligible for Batch Change
-                $STMT_updateStudentDetails = 'UPDATE student_details 
-                                              SET student_father_name       = :student_father_name,
-                                                  student_guardian_name     = :student_guardian_name,
-                                                  student_school_name       = :student_school_name,
-                                                  student_bio              = :student_bio
-                                              WHERE student_usercode = :student_usercode';
-              }
-
-              
-              $update_studentDetails = $db1->prepare($STMT_updateStudentDetails);
-
-              $update_studentDetails->bindValue(':student_father_name',     $updatedFatherName,    PDO::PARAM_STR);
-              $update_studentDetails->bindValue(':student_guardian_name',   $updatedGuardianName,  PDO::PARAM_STR);
-              if ($isBatchEditable) { // Student Eligible for Batch Change
-                $update_studentDetails->bindValue(':student_batch_details', $batchDetails,         PDO::PARAM_STR);
-              }
-              $update_studentDetails->bindValue(':student_school_name',     $updatedSchoolName,    PDO::PARAM_STR);
-              $update_studentDetails->bindValue(':student_bio',             $updatedStudentBio,    PDO::PARAM_STR);
-              $update_studentDetails->bindValue(':student_usercode',        $_SESSION['usercode'], PDO::PARAM_STR);
-
-              $update_studentDetails->execute();
-
-
-              // User Profile has been updated before. No need to change configurations.
-              if (checkForEquality($userRecord['student_has_updated_account_profile'], 0, 'strict')) {
-                $STMT_updateStudentConfiguration = 'UPDATE student_configurations 
-                                                    SET student_has_updated_account_profile = :student_has_updated_account_profile
-                                                    WHERE student_usercode = :student_usercode';
-                $update_studentConfiguration = $db1->prepare($STMT_updateStudentConfiguration);
-
-                $update_studentConfiguration->bindValue(':student_has_updated_account_profile', 1, PDO::PARAM_INT);
-                $update_studentConfiguration->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-
-                $update_studentConfiguration->execute();
-              }
-
-
-
-              $STMT_uploadProfileUpdationTimestamp = 'UPDATE student_timestamps
-                                                      SET student_profile_updating_timestamp = :student_profile_updating_timestamp
-                                                      WHERE student_usercode = :student_usercode';
-              $uploadProfileUpdationTimestamp = $db1->prepare($STMT_uploadProfileUpdationTimestamp);
-
-              $uploadProfileUpdationTimestamp->bindValue(':student_profile_updating_timestamp', $currentTimestamp, PDO::PARAM_STR);
-              $uploadProfileUpdationTimestamp->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-
-              $uploadProfileUpdationTimestamp->execute();
-
-
-              if ($db1->commit()) { // Success
-                setToast('Profile Details updated successfully.', 'success', 7000);
-
-                redirectTo('./', 0);
+              if($updateStudentEmailPreference->execute()) {
+                setToast('Email Communication Preference saved successfully.', 'success', 7000);
+                redirectTo('./', 0); // Refresh the page
                 break;
               }
             }
             catch (PDOException $ex) {
-              if($db1->inTransaction()) {
-                $db1->rollBack();
-              }
-
               if(!isRetryablePdoException($ex)) {
-                setToast('Error occured while Updating Additional Details. Contact Admin.', 'danger', 7000);
+                setToast('Error occured while Updating Email Preference. Contact Admin.', 'danger', 7000);
 
-                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while Updating Additional Details: ' . $ex->getMessage());
+                logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while updating Email Preference: ' . $ex->getMessage());
 
                 break;
               }
-              $currentAttemptForUpdatingStudentDetails++;
-              sleep(5);
             }
+            $currentAttemptForUpdatingEmailPreference++;
+            sleep(5);
           }
-          if($currentAttemptForUpdatingStudentDetails >= $maxRetriesForUpdatingStudentDetails) {
-            setToast('Error occured while Updating Additional Details. Contact Admin.', 'danger', 7000);
+          if($currentAttemptForUpdatingEmailPreference >= $maxRetriesForUpdatingEmailPreference) {
+            setToast('Error occured while updating Email Preference. Contact Admin.', 'danger', 7000);
           }
         }
-        else { // Required Fields are empty
-          setToast('One or more required fields are empty!', 'danger', 7000);
-        }
-      }
-      else { // Profile Change Cooldown
-        setToast('Profile Details can be changed again after 1 day!', 'danger', 7000);
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
-
-  elseif (isset($_POST['saveConfigurations'])) {
-    $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
-
-    if(validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
-
-      $STMT_updateStudentEmailPreference = 'UPDATE student_configurations
-                                            SET student_has_opted_email_communication = :student_has_opted_email_communication
-                                            WHERE student_usercode = :student_usercode
-                                            LIMIT 1';
-
-      $updateStudentEmailPreference = $db1->prepare($STMT_updateStudentEmailPreference);
-
-      if(isset($_POST['emailConfiguration'])) {
-        $updateStudentEmailPreference->bindValue(':student_has_opted_email_communication', 1, PDO::PARAM_INT);
-      }
-      else {
-        $updateStudentEmailPreference->bindValue(':student_has_opted_email_communication', 0, PDO::PARAM_INT);
-      }
-      
-      $updateStudentEmailPreference->bindValue(':student_usercode', $_SESSION['usercode'], PDO::PARAM_STR);
-
-      $currentAttemptForUpdatingEmailPreference = 0;
-      $maxRetriesForUpdatingEmailPreference = 3;
-
-      while($currentAttemptForUpdatingEmailPreference < $maxRetriesForUpdatingEmailPreference) {
-        try {
-          if($updateStudentEmailPreference->execute()) {
-            setToast('Email Communication Preference saved successfully.', 'success', 7000);
-            redirectTo('./', 0); // Refresh the page
-            break;
-          }
-        }
-        catch (PDOException $ex) {
-          if(!isRetryablePdoException($ex)) {
-            setToast('Error occured while Updating Email Preference. Contact Admin.', 'danger', 7000);
-
-            logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Error occured while updating Email Preference: ' . $ex->getMessage());
-
-            break;
-          }
-        }
-        $currentAttemptForUpdatingEmailPreference++;
-        sleep(5);
-      }
-      if($currentAttemptForUpdatingEmailPreference >= $maxRetriesForUpdatingEmailPreference) {
-        setToast('Error occured while updating Email Preference. Contact Admin.', 'danger', 7000);
-      }
-    }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
   }
 ?>
 

@@ -138,9 +138,9 @@
     }
   }
 
-  $loginRateLimitKey = 'accounts_login';
+  if (checkForEquality(checkLoginStatus($db1), false, 'strict')) {
+    $loginRateLimitKey = 'accounts_login';
 
-  if (!checkLoginStatus($db1)) {
     if (isset($_POST['loginUserBtn'])) {
       $enteredEmail    = escapeOutput($_POST['email']) ?? null;
       $enteredPassword = escapeOutput($_POST['password']) ?? null;

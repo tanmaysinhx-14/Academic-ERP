@@ -8,6 +8,12 @@
   extract($bootstrapData, EXTR_OVERWRITE);
 ?>
 
+<?php // Backend for Daily Class Records
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    ; // Do Nothing
+  }
+?>
+
 <?php // Headers 
   $page_title = "Daily Class Records | careerinstitute.co.in";
   

@@ -6,461 +6,462 @@
   extract($bootstrapData, EXTR_OVERWRITE);
 ?>
 
-<?php
-  function fetchFacultyRecords(PDO $db): array {
-    try {
-      $STMT_fetchFaculty = 'SELECT fd.faculty_id,
-                                   fd.faculty_usercode,
-                                   fd.faculty_name,
-                                   fd.faculty_email,
-                                   fd.faculty_username,
-                                   fd.faculty_bio,
-                                   fd.faculty_reference_code,
-                                   fc.faculty_account_activation_status,
-                                   ft.faculty_account_creation_timestamp
-                            FROM faculty_details fd
-                            LEFT JOIN faculty_configurations fc
-                              ON fd.faculty_id = fc.faculty_id
-                            LEFT JOIN faculty_timestamps ft
-                              ON fd.faculty_id = ft.faculty_id
-                            ORDER BY fd.faculty_id DESC';
-      $fetchFaculty = $db->query($STMT_fetchFaculty);
-      return $fetchFaculty->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-    catch (PDOException) {
-      return [];
-    }
-  }
-?>
-
 <?php // Backend for Faculty Manager
+  if(checkForEquality(checkLoginStatus($db1), true, 'strict')) {
+    if(checkForEquality(getUserRoleUsingUserCode($_SESSION['usercode']), 'admin', 'strict')) {
+      function fetchFacultyRecords(PDO $db): array {
+        try {
+          $STMT_fetchFaculty = 'SELECT fd.faculty_id,
+                                      fd.faculty_usercode,
+                                      fd.faculty_name,
+                                      fd.faculty_email,
+                                      fd.faculty_username,
+                                      fd.faculty_bio,
+                                      fd.faculty_reference_code,
+                                      fc.faculty_account_activation_status,
+                                      ft.faculty_account_creation_timestamp
+                                FROM faculty_details fd
+                                LEFT JOIN faculty_configurations fc
+                                  ON fd.faculty_id = fc.faculty_id
+                                LEFT JOIN faculty_timestamps ft
+                                  ON fd.faculty_id = ft.faculty_id
+                                ORDER BY fd.faculty_id DESC';
+          $fetchFaculty = $db->query($STMT_fetchFaculty);
+          return $fetchFaculty->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+        catch (PDOException) {
+          return [];
+        }
+      }
 
-  // Backend for Faculty Account Creation
-  if (isset($_POST['createFacultyBtn'])) {
-    $enteredName     = escapeOutput($_POST['faculty_name'])     ?? null;
-    $enteredEmail    = escapeOutput($_POST['faculty_email'])    ?? null;
-    $csrfToken       = escapeOutput($_POST['csrf_token'])       ?? null;
+      // Backend for Faculty Account Creation
+      if (isset($_POST['createFacultyBtn'])) {
+        $enteredName     = escapeOutput($_POST['faculty_name'])     ?? null;
+        $enteredEmail    = escapeOutput($_POST['faculty_email'])    ?? null;
+        $csrfToken       = escapeOutput($_POST['csrf_token'])       ?? null;
 
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+        if (validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
 
-      if (validateEmail($enteredEmail)) {
-        if (!checkUserRecord($db1, 'faculty_details', ['faculty_email' => $enteredEmail])) {
-          $generatedCode        = generateReferenceCode();
-          $hashedPassword       = password_hash($generatedCode, PASSWORD_DEFAULT);
-          $creationTimestamp    = getCurrentTimestamp();
+          if (validateEmail($enteredEmail)) {
+            if (!checkUserRecord($db1, 'faculty_details', ['faculty_email' => $enteredEmail])) {
+              $generatedCode        = generateReferenceCode();
+              $hashedPassword       = password_hash($generatedCode, PASSWORD_DEFAULT);
+              $creationTimestamp    = getCurrentTimestamp();
 
-          $currentAttemptForInsertingFacultyData = 0;
-          $maxRetriesForInsertingFacultyData     = 3;
+              $currentAttemptForInsertingFacultyData = 0;
+              $maxRetriesForInsertingFacultyData     = 3;
 
-          while ($currentAttemptForInsertingFacultyData < $maxRetriesForInsertingFacultyData) {
-            try {
-              $db1->beginTransaction();
-
-              $STMT_insertFacultyDetails = 'INSERT INTO faculty_details (faculty_email, faculty_name, faculty_password, faculty_reference_code)
-                                                                 VALUES (:faculty_email, :faculty_name, :faculty_password, :faculty_reference_code)';
-              $insertFacultyDetails = $db1->prepare($STMT_insertFacultyDetails);
-              $insertFacultyDetails->bindValue(':faculty_email',          $enteredEmail,   PDO::PARAM_STR);
-              $insertFacultyDetails->bindValue(':faculty_name',           $enteredName,    PDO::PARAM_STR);
-              $insertFacultyDetails->bindValue(':faculty_password',       $hashedPassword, PDO::PARAM_STR);
-              $insertFacultyDetails->bindValue(':faculty_reference_code', $generatedCode,  PDO::PARAM_STR);
-              $insertFacultyDetails->execute();
-
-              $facultyId       = (int) $db1->lastInsertId();
-              $facultyUsercode = generateUserCode('faculty', $facultyId);
-
-              $STMT_updateFacultyUsercode = 'UPDATE faculty_details 
-                                             SET faculty_usercode = :faculty_usercode 
-                                             WHERE faculty_id = :faculty_id
-                                             LIMIT 1';
-              $updateFacultyUsercode = $db1->prepare($STMT_updateFacultyUsercode);
-              $updateFacultyUsercode->bindValue(':faculty_usercode', $facultyUsercode, PDO::PARAM_STR);
-              $updateFacultyUsercode->bindValue(':faculty_id',       $facultyId,       PDO::PARAM_INT);
-              $updateFacultyUsercode->execute();
-
-              $STMT_insertFacultyConfig = 'INSERT INTO faculty_configurations (faculty_id, faculty_usercode, faculty_email, faculty_account_activation_status, faculty_has_updated_username, faculty_has_updated_account_profile, faculty_has_opted_email_communication)
-                                    VALUES (:faculty_id, :faculty_usercode, :faculty_email, 0, 0, 0, 1)';
-              $insertFacultyConfig = $db1->prepare($STMT_insertFacultyConfig);
-              $insertFacultyConfig->bindValue(':faculty_id',       $facultyId,       PDO::PARAM_INT);
-              $insertFacultyConfig->bindValue(':faculty_usercode', $facultyUsercode, PDO::PARAM_STR);
-              $insertFacultyConfig->bindValue(':faculty_email',    $enteredEmail,    PDO::PARAM_STR);
-              $insertFacultyConfig->execute();
-
-              $STMT_insertFacultyTimestamps = 'INSERT INTO faculty_timestamps (faculty_id, faculty_usercode, faculty_email, faculty_account_creation_timestamp)
-                                                                       VALUES (:faculty_id, :faculty_usercode, :faculty_email, :faculty_account_creation_timestamp)';
-              $insertFacultyTimestamps = $db1->prepare($STMT_insertFacultyTimestamps);
-              $insertFacultyTimestamps->bindValue(':faculty_id',                         $facultyId,         PDO::PARAM_INT);
-              $insertFacultyTimestamps->bindValue(':faculty_usercode',                   $facultyUsercode,   PDO::PARAM_STR);
-              $insertFacultyTimestamps->bindValue(':faculty_email',                      $enteredEmail,      PDO::PARAM_STR);
-              $insertFacultyTimestamps->bindValue(':faculty_account_creation_timestamp', $creationTimestamp, PDO::PARAM_STR);
-              $insertFacultyTimestamps->execute();
-
-              $db1->commit();
-              
-              $displayEmail = htmlspecialchars($enteredEmail,  ENT_QUOTES, 'UTF-8');
-
-              $mail = createConfiguredMailer();
-              $mail->addAddress($enteredEmail);
-              $mail->isHTML(true);
-              $mail->Subject = 'Faculty Account Created | Career Institute';
-              $mail->Body    = '
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                  <meta charset="UTF-8">
-                  <title>Account Activation</title>
-                </head>
-                <body style="margin:0; padding:0; background-color:#f4f4f4;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-                         style="border-collapse:collapse; background-color:#f4f4f4;">
-                    <tr>
-                      <td align="center" style="padding:20px 10px;">
-                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-                               style="max-width:600px; border-collapse:collapse; background-color:#ffffff;">
-
-                          <tr>
-                            <td align="center" style="background-color:#007BFF; padding:20px;">
-                              <h1 style="margin:0; font-family:Arial, sans-serif; font-size:24px; line-height:1.4; color:#ffffff;">
-                                Career Institute
-                              </h1>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:25px 25px 10px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <h2 style="margin:0 0 15px 0; font-size:20px; color:#007BFF; line-height:1.4;">
-                                Welcome, ' . $displayEmail . '!
-                              </h2>
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                Thank you for creating an account with Career Institute.
-                              </p>
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                Use the below reference code as your password for logging into your account.
-                              </p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td align="center" style="padding:10px 25px 20px 25px;">
-                              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                <tr>
-                                  <td align="center" bgcolor="#007BFF" style="border-radius:4px;">
-                                    <span style="display:inline-block;
-                                                 padding:10px 24px;
-                                                 font-family:Arial, sans-serif;
-                                                 font-size:14px;
-                                                 font-weight:bold;
-                                                 color:#ffffff;
-                                                 border-radius:4px;">
-                                      ' . escapeOutput($generatedCode) . '
-                                    </span>
-                                  </td>
-                                </tr>
-                              </table>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:0 25px 20px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
-                                If you did not create an account with Career Institute, you can safely ignore this email.
-                                If you have any concerns, please contact us at
-                                <a href="mailto:careerinstitutepatna@gmail.com" style="color:#007BFF; text-decoration:none;">
-                                  careerinstitutepatna@gmail.com
-                                </a>
-                                or visit our
-                                <a href="https://careerinstitute.co.in/servicePages/contactUs/"
-                                   style="color:#007BFF; text-decoration:none;">Contact Us</a> page.
-                              </p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td style="padding:0 25px 25px 25px; font-family:Arial, sans-serif; color:#333333;">
-                              <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;">Best regards,</p>
-                              <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;"><strong>The Career Institute Team</strong></p>
-                              <p style="margin:0; font-size:13px; line-height:1.6;"><em>Your Future, Our Commitment.</em></p>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td align="center" style="background-color:#f4f4f4; padding:15px 20px;
-                                        font-family:Arial, sans-serif; color:#888888;">
-                              <p style="margin:0 0 6px 0; font-size:11px; line-height:1.6;">
-                                You are receiving this email because your email address was used to create an account at
-                                <a href="https://careerinstitute.co.in" style="color:#007BFF; text-decoration:none;">Career Institute</a>.
-                              </p>
-                              <p style="margin:0; font-size:11px; line-height:1.6;">
-                                K-180 Shashi Complex (2nd Floor), Kali Mandir Road, Kankarbagh, Patna 800020
-                              </p>
-                            </td>
-                          </tr>
-
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </body>
-                </html>
-              ';
-              $mail->AltBody = "Welcome to Career Institute!\n\nYour faculty account was created successfully.\nReference code: " . escapeOutput($generatedCode) . "\n\nDon/'t share this code with anyone, as it serves as your temporary password for first-time login. Make sure to reset your password after logging in.";
-
-              $currentAttemptForSendingFacultyEmail = 0;
-              $maxRetriesForSendingFacultyEmail     = 3;
-
-              while ($currentAttemptForSendingFacultyEmail < $maxRetriesForSendingFacultyEmail) {
+              while ($currentAttemptForInsertingFacultyData < $maxRetriesForInsertingFacultyData) {
                 try {
-                  if ($mail->send()) {
-                    setToast('Account Details Submitted Successfully. Waiting for Approval from Admin.', 'success', 15000);
+                  $db1->beginTransaction();
+
+                  $STMT_insertFacultyDetails = 'INSERT INTO faculty_details (faculty_email, faculty_name, faculty_password, faculty_reference_code)
+                                                                    VALUES (:faculty_email, :faculty_name, :faculty_password, :faculty_reference_code)';
+                  $insertFacultyDetails = $db1->prepare($STMT_insertFacultyDetails);
+                  $insertFacultyDetails->bindValue(':faculty_email',          $enteredEmail,   PDO::PARAM_STR);
+                  $insertFacultyDetails->bindValue(':faculty_name',           $enteredName,    PDO::PARAM_STR);
+                  $insertFacultyDetails->bindValue(':faculty_password',       $hashedPassword, PDO::PARAM_STR);
+                  $insertFacultyDetails->bindValue(':faculty_reference_code', $generatedCode,  PDO::PARAM_STR);
+                  $insertFacultyDetails->execute();
+
+                  $facultyId       = (int) $db1->lastInsertId();
+                  $facultyUsercode = generateUserCode('faculty', $facultyId);
+
+                  $STMT_updateFacultyUsercode = 'UPDATE faculty_details 
+                                                SET faculty_usercode = :faculty_usercode 
+                                                WHERE faculty_id = :faculty_id
+                                                LIMIT 1';
+                  $updateFacultyUsercode = $db1->prepare($STMT_updateFacultyUsercode);
+                  $updateFacultyUsercode->bindValue(':faculty_usercode', $facultyUsercode, PDO::PARAM_STR);
+                  $updateFacultyUsercode->bindValue(':faculty_id',       $facultyId,       PDO::PARAM_INT);
+                  $updateFacultyUsercode->execute();
+
+                  $STMT_insertFacultyConfig = 'INSERT INTO faculty_configurations (faculty_id, faculty_usercode, faculty_email, faculty_account_activation_status, faculty_has_updated_username, faculty_has_updated_account_profile, faculty_has_opted_email_communication)
+                                        VALUES (:faculty_id, :faculty_usercode, :faculty_email, 0, 0, 0, 1)';
+                  $insertFacultyConfig = $db1->prepare($STMT_insertFacultyConfig);
+                  $insertFacultyConfig->bindValue(':faculty_id',       $facultyId,       PDO::PARAM_INT);
+                  $insertFacultyConfig->bindValue(':faculty_usercode', $facultyUsercode, PDO::PARAM_STR);
+                  $insertFacultyConfig->bindValue(':faculty_email',    $enteredEmail,    PDO::PARAM_STR);
+                  $insertFacultyConfig->execute();
+
+                  $STMT_insertFacultyTimestamps = 'INSERT INTO faculty_timestamps (faculty_id, faculty_usercode, faculty_email, faculty_account_creation_timestamp)
+                                                                          VALUES (:faculty_id, :faculty_usercode, :faculty_email, :faculty_account_creation_timestamp)';
+                  $insertFacultyTimestamps = $db1->prepare($STMT_insertFacultyTimestamps);
+                  $insertFacultyTimestamps->bindValue(':faculty_id',                         $facultyId,         PDO::PARAM_INT);
+                  $insertFacultyTimestamps->bindValue(':faculty_usercode',                   $facultyUsercode,   PDO::PARAM_STR);
+                  $insertFacultyTimestamps->bindValue(':faculty_email',                      $enteredEmail,      PDO::PARAM_STR);
+                  $insertFacultyTimestamps->bindValue(':faculty_account_creation_timestamp', $creationTimestamp, PDO::PARAM_STR);
+                  $insertFacultyTimestamps->execute();
+
+                  $db1->commit();
+                  
+                  $displayEmail = htmlspecialchars($enteredEmail,  ENT_QUOTES, 'UTF-8');
+
+                  $mail = createConfiguredMailer();
+                  $mail->addAddress($enteredEmail);
+                  $mail->isHTML(true);
+                  $mail->Subject = 'Faculty Account Created | Career Institute';
+                  $mail->Body    = '
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                      <meta charset="UTF-8">
+                      <title>Account Activation</title>
+                    </head>
+                    <body style="margin:0; padding:0; background-color:#f4f4f4;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                            style="border-collapse:collapse; background-color:#f4f4f4;">
+                        <tr>
+                          <td align="center" style="padding:20px 10px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                                  style="max-width:600px; border-collapse:collapse; background-color:#ffffff;">
+
+                              <tr>
+                                <td align="center" style="background-color:#007BFF; padding:20px;">
+                                  <h1 style="margin:0; font-family:Arial, sans-serif; font-size:24px; line-height:1.4; color:#ffffff;">
+                                    Career Institute
+                                  </h1>
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td style="padding:25px 25px 10px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                  <h2 style="margin:0 0 15px 0; font-size:20px; color:#007BFF; line-height:1.4;">
+                                    Welcome, ' . $displayEmail . '!
+                                  </h2>
+                                  <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                    Thank you for creating an account with Career Institute.
+                                  </p>
+                                  <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                    Use the below reference code as your password for logging into your account.
+                                  </p>
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td align="center" style="padding:10px 25px 20px 25px;">
+                                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                      <td align="center" bgcolor="#007BFF" style="border-radius:4px;">
+                                        <span style="display:inline-block;
+                                                    padding:10px 24px;
+                                                    font-family:Arial, sans-serif;
+                                                    font-size:14px;
+                                                    font-weight:bold;
+                                                    color:#ffffff;
+                                                    border-radius:4px;">
+                                          ' . escapeOutput($generatedCode) . '
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  </table>
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td style="padding:0 25px 20px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                  <p style="margin:0 0 12px 0; font-size:14px; line-height:1.6;">
+                                    If you did not create an account with Career Institute, you can safely ignore this email.
+                                    If you have any concerns, please contact us at
+                                    <a href="mailto:careerinstitutepatna@gmail.com" style="color:#007BFF; text-decoration:none;">
+                                      careerinstitutepatna@gmail.com
+                                    </a>
+                                    or visit our
+                                    <a href="https://careerinstitute.co.in/servicePages/contactUs/"
+                                      style="color:#007BFF; text-decoration:none;">Contact Us</a> page.
+                                  </p>
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td style="padding:0 25px 25px 25px; font-family:Arial, sans-serif; color:#333333;">
+                                  <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;">Best regards,</p>
+                                  <p style="margin:0 0 4px 0; font-size:14px; line-height:1.6;"><strong>The Career Institute Team</strong></p>
+                                  <p style="margin:0; font-size:13px; line-height:1.6;"><em>Your Future, Our Commitment.</em></p>
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td align="center" style="background-color:#f4f4f4; padding:15px 20px;
+                                            font-family:Arial, sans-serif; color:#888888;">
+                                  <p style="margin:0 0 6px 0; font-size:11px; line-height:1.6;">
+                                    You are receiving this email because your email address was used to create an account at
+                                    <a href="https://careerinstitute.co.in" style="color:#007BFF; text-decoration:none;">Career Institute</a>.
+                                  </p>
+                                  <p style="margin:0; font-size:11px; line-height:1.6;">
+                                    K-180 Shashi Complex (2nd Floor), Kali Mandir Road, Kankarbagh, Patna 800020
+                                  </p>
+                                </td>
+                              </tr>
+
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </body>
+                    </html>
+                  ';
+                  $mail->AltBody = "Welcome to Career Institute!\n\nYour faculty account was created successfully.\nReference code: " . escapeOutput($generatedCode) . "\n\nDon/'t share this code with anyone, as it serves as your temporary password for first-time login. Make sure to reset your password after logging in.";
+
+                  $currentAttemptForSendingFacultyEmail = 0;
+                  $maxRetriesForSendingFacultyEmail     = 3;
+
+                  while ($currentAttemptForSendingFacultyEmail < $maxRetriesForSendingFacultyEmail) {
+                    try {
+                      if ($mail->send()) {
+                        setToast('Account Details Submitted Successfully. Waiting for Approval from Admin.', 'success', 15000);
+                        break;
+                      }
+                    }
+                    catch (Exception $ex) {
+                      if (!isRetryableSmtpFailure($mail)) {
+                        logAppError($db2, null, getCurrentURL(), 'MAIL', 'Error occurred while Sending Activation Mail: ' . $mail->ErrorInfo);
+                        break;
+                      }
+                    }
+                    $currentAttemptForSendingFacultyEmail++;
+                    sleep(5);
+                  }
+
+                  setToast('Faculty account for ' . escapeOutput($enteredName) . ' was created successfully.', 'success', 6000);
+
+                  break;
+                }
+                catch (PDOException $ex) {
+                  if ($db1->inTransaction()) $db1->rollBack();
+
+                  if (!isRetryablePdoException($ex)) {
+                    setToast('An error occurred while creating the faculty account. Please contact the system administrator.' . $ex->getMessage(), 'danger', 7000);
+                    logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error creating faculty record: ' . $ex->getMessage());
                     break;
                   }
+
+                  $currentAttemptForInsertingFacultyData++;
+                  sleep(3);
                 }
-                catch (Exception $ex) {
-                  if (!isRetryableSmtpFailure($mail)) {
-                    logAppError($db2, null, getCurrentURL(), 'MAIL', 'Error occurred while Sending Activation Mail: ' . $mail->ErrorInfo);
-                    break;
-                  }
-                }
-                $currentAttemptForSendingFacultyEmail++;
-                sleep(5);
               }
-
-              setToast('Faculty account for ' . escapeOutput($enteredName) . ' was created successfully.', 'success', 6000);
-
-              break;
+              if ($currentAttemptForInsertingFacultyData >= $maxRetriesForInsertingFacultyData) {
+                setToast('Failed to create faculty account after multiple attempts. Please try again later.', 'danger', 7000);
+              }
             }
-            catch (PDOException $ex) {
-              if ($db1->inTransaction()) $db1->rollBack();
+            else {
+              $facultyEmailValidationStatus = 'is-invalid';
+              $facultyEmailHelpText         = '<span class="text-danger d-flex align-items-center gap-1 mt-1">
+                                                <span class="material-symbols-outlined" style="font-size:1rem;">info</span> 
+                                                This email address is already associated with another faculty member.
+                                              </span>';
+            }
+          }
+          else {
+            $facultyEmailValidationStatus = 'is-invalid';
+            $facultyEmailHelpText         = '<span class="text-danger d-flex align-items-center gap-1 mt-1">
+                                              <span class="material-symbols-outlined" style="font-size:1rem;">info</span>
+                                              Please enter a valid email address.
+                                            </span>';
+          }
+        }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+      }
 
-              if (!isRetryablePdoException($ex)) {
-                setToast('An error occurred while creating the faculty account. Please contact the system administrator.' . $ex->getMessage(), 'danger', 7000);
-                logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error creating faculty record: ' . $ex->getMessage());
+      // Backend for Faculty Account Editing (using Dialog Box)
+      if (isset($_POST['editFacultyBtn'])) {
+        $editId         = (int)   (escapeOutput($_POST['edit_faculty_id'])   ?? 0);
+        $editName       = escapeOutput($_POST['edit_faculty_name'])          ?? null;
+        $editEmail      = escapeOutput($_POST['edit_faculty_email'])         ?? null;
+        $editUsername   = escapeOutput($_POST['edit_faculty_username'])      ?? null;
+        $editBio        = escapeOutput($_POST['edit_faculty_bio'])           ?? null;
+        $editActivation = (int) isset($_POST['edit_faculty_account_activation_status']);
+        $csrfToken      = escapeOutput($_POST['csrf_token'])                 ?? null;
+
+        if (validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
+
+          $isValid = true;
+
+          if ($editId <= 0) {
+            setToast('Invalid faculty record. Please try again.', 'danger', 6000);
+            $isValid = false;
+          }
+
+          if ($isValid && (empty($editName) || strlen($editName) < 2)) {
+            setToast('Please enter a valid full name (min. 2 characters).', 'danger', 6000);
+            $isValid = false;
+          }
+
+          if ($isValid && !validateEmail($editEmail)) {
+            setToast('Please enter a valid email address.', 'danger', 6000);
+            $isValid = false;
+          }
+
+          if ($isValid) {
+            try {
+              $checkEmail = $db1->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_email = :email AND faculty_id != :id');
+              $checkEmail->bindValue(':email', $editEmail, PDO::PARAM_STR);
+              $checkEmail->bindValue(':id',    $editId,    PDO::PARAM_INT);
+              $checkEmail->execute();
+              if ($checkEmail->fetch()) {
+                setToast('This email address is already in use by another faculty member.', 'danger', 6000);
+                $isValid = false;
+              }
+            }
+            catch (PDOException) {
+              setToast('An error occurred during validation. Please try again.', 'danger', 6000);
+              $isValid = false;
+            }
+          }
+
+          $finalUsername = !empty($editUsername) ? $editUsername : null;
+          $finalBio      = !empty($editBio)      ? $editBio      : null;
+
+          if ($isValid && $finalUsername !== null) {
+            try {
+              $checkUsername = $db1->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_username = :un AND faculty_id != :id');
+              $checkUsername->bindValue(':un',  $finalUsername, PDO::PARAM_STR);
+              $checkUsername->bindValue(':id',  $editId,        PDO::PARAM_INT);
+              $checkUsername->execute();
+              if ($checkUsername->fetch()) {
+                setToast('This username is already taken by another faculty member.', 'danger', 6000);
+                $isValid = false;
+              }
+            }
+            catch (PDOException) {
+              setToast('An error occurred during validation. Please try again.', 'danger', 6000);
+              $isValid = false;
+            }
+          }
+
+          if ($isValid) {
+            $currentAttempt = 0;
+            $maxRetries     = 3;
+
+            while ($currentAttempt < $maxRetries) {
+              try {
+                $db1->beginTransaction();
+
+                $STMT_updateFacultyDetails = 'UPDATE faculty_details
+                                              SET faculty_name     = :name,
+                                                  faculty_email    = :email,
+                                                  faculty_username = :username,
+                                                  faculty_bio      = :bio
+                                              WHERE faculty_id = :id
+                                              LIMIT 1';
+                $updateFacultyDetails = $db1->prepare($STMT_updateFacultyDetails);
+                $updateFacultyDetails->bindValue(':name',     $editName,      PDO::PARAM_STR);
+                $updateFacultyDetails->bindValue(':email',    $editEmail,     PDO::PARAM_STR);
+                $updateFacultyDetails->bindValue(':username', $finalUsername, $finalUsername ? PDO::PARAM_STR : PDO::PARAM_NULL);
+                $updateFacultyDetails->bindValue(':bio',      $finalBio,      $finalBio      ? PDO::PARAM_STR : PDO::PARAM_NULL);
+                $updateFacultyDetails->bindValue(':id',       $editId,        PDO::PARAM_INT);
+                $updateFacultyDetails->execute();
+
+                $STMT_updateFacultyConfig = 'UPDATE faculty_configurations
+                                            SET faculty_account_activation_status = :status,
+                                                faculty_email                   = :email
+                                            WHERE faculty_id = :id
+                                            LIMIT 1';
+                $updateFacultyConfig = $db1->prepare($STMT_updateFacultyConfig);
+                $updateFacultyConfig->bindValue(':status', $editActivation, PDO::PARAM_INT);
+                $updateFacultyConfig->bindValue(':email',  $editEmail,      PDO::PARAM_STR);
+                $updateFacultyConfig->bindValue(':id',     $editId,         PDO::PARAM_INT);
+                $updateFacultyConfig->execute();
+
+                $STMT_updateFacultyTimestamps = 'UPDATE faculty_timestamps
+                                                SET faculty_email = :email
+                                                WHERE faculty_id = :id
+                                                LIMIT 1';
+                $updateFacultyTimestamps = $db1->prepare($STMT_updateFacultyTimestamps);
+                $updateFacultyTimestamps->bindValue(':email', $editEmail, PDO::PARAM_STR);
+                $updateFacultyTimestamps->bindValue(':id',    $editId,    PDO::PARAM_INT);
+                $updateFacultyTimestamps->execute();
+
+                $db1->commit();
+
+                setToast('Faculty record updated successfully.', 'success', 5000);
                 break;
               }
+              catch (PDOException $ex) {
+                if ($db1->inTransaction()) $db1->rollBack();
 
-              $currentAttemptForInsertingFacultyData++;
-              sleep(3);
+                if (!isRetryablePdoException($ex)) {
+                  setToast('An error occurred while updating the record. Please contact the system administrator.', 'danger', 7000);
+                  logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating faculty record: ' . $ex->getMessage());
+                  break;
+                }
+
+                $currentAttempt++;
+                sleep(3);
+              }
+            }
+            if ($currentAttempt >= $maxRetries) {
+              setToast('Failed to update the record after multiple attempts. Please try again later.', 'danger', 7000);
             }
           }
-          if ($currentAttemptForInsertingFacultyData >= $maxRetriesForInsertingFacultyData) {
-            setToast('Failed to create faculty account after multiple attempts. Please try again later.', 'danger', 7000);
+        }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+      }
+
+      // Backend for Faculty Account Deletion (using Dialog Box)
+      if (isset($_POST['deleteFacultyBtn'])) {
+        $deleteId  = (int) (escapeOutput($_POST['delete_faculty_id']) ?? null);
+        $csrfToken = escapeOutput($_POST['csrf_token'])               ?? null;
+
+        if (validateCsrfToken($csrfToken)) {
+          unsetCsrfToken();
+
+          if ($deleteId != null) {
+            $currentAttemptForDeletingFacultyRecord = 0;
+            $maxRetriesForDeletingFacultyRecord     = 3;
+
+            while ($currentAttemptForDeletingFacultyRecord < $maxRetriesForDeletingFacultyRecord) {
+              try {
+                $db1->beginTransaction();
+
+                $generatedUsercode = generateUserCode('faculty', $deleteId);
+                
+                // Multiple Rows to be deleted
+                foreach (['faculty_configurations', 'faculty_timestamps', 'faculty_devicedetails'] as $table) {
+                  $stmt = $db1->prepare("DELETE FROM {$table} WHERE faculty_usercode = :usercode");
+                  $stmt->bindValue(':usercode', $generatedUsercode, PDO::PARAM_STR);
+                  $stmt->execute();
+                }
+
+                // One unique row to be deleted
+                $STMT_deleteFacultyDetails = 'DELETE FROM faculty_details WHERE faculty_usercode = :usercode LIMIT 1';
+                $deleteFacultyDetails = $db1->prepare($STMT_deleteFacultyDetails);
+                $deleteFacultyDetails->bindValue(':usercode', $generatedUsercode, PDO::PARAM_STR);
+                $deleteFacultyDetails->execute();
+
+                $db1->commit();
+
+                setToast('Faculty record deleted successfully.', 'success', 5000);
+                break;
+              }
+              catch (PDOException $ex) {
+                if ($db1->inTransaction()) $db1->rollBack();
+
+                if (!isRetryablePdoException($ex)) {
+                  setToast('An error occurred while deleting the record. Please contact the system administrator.', 'danger', 7000);
+                  logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error deleting faculty record: ' . $ex->getMessage());
+                  break;
+                }
+
+                $currentAttemptForDeletingFacultyRecord++;
+                sleep(3);
+              }
+            }
+            if ($currentAttemptForDeletingFacultyRecord >= $maxRetriesForDeletingFacultyRecord) {
+              setToast('Failed to delete the record after multiple attempts. Please try again later.', 'danger', 7000);
+            }
           }
+          else setToast('Invalid faculty record. Please try again.', 'danger', 6000);
         }
-        else {
-          $facultyEmailValidationStatus = 'is-invalid';
-          $facultyEmailHelpText         = '<span class="text-danger d-flex align-items-center gap-1 mt-1">
-                                            <span class="material-symbols-outlined" style="font-size:1rem;">info</span> 
-                                            This email address is already associated with another faculty member.
-                                          </span>';
-        }
+        else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
-      else {
-        $facultyEmailValidationStatus = 'is-invalid';
-        $facultyEmailHelpText         = '<span class="text-danger d-flex align-items-center gap-1 mt-1">
-                                          <span class="material-symbols-outlined" style="font-size:1rem;">info</span>
-                                          Please enter a valid email address.
-                                        </span>';
-      }
+
+      $facultyRecords = fetchFacultyRecords($db1);
+      $csrfTokenValue = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
   }
-
-  // Backend for Faculty Account Editing (using Dialog Box)
-  if (isset($_POST['editFacultyBtn'])) {
-    $editId         = (int)   (escapeOutput($_POST['edit_faculty_id'])   ?? 0);
-    $editName       = escapeOutput($_POST['edit_faculty_name'])          ?? null;
-    $editEmail      = escapeOutput($_POST['edit_faculty_email'])         ?? null;
-    $editUsername   = escapeOutput($_POST['edit_faculty_username'])      ?? null;
-    $editBio        = escapeOutput($_POST['edit_faculty_bio'])           ?? null;
-    $editActivation = (int) isset($_POST['edit_faculty_account_activation_status']);
-    $csrfToken      = escapeOutput($_POST['csrf_token'])                 ?? null;
-
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
-
-      $isValid = true;
-
-      if ($editId <= 0) {
-        setToast('Invalid faculty record. Please try again.', 'danger', 6000);
-        $isValid = false;
-      }
-
-      if ($isValid && (empty($editName) || strlen($editName) < 2)) {
-        setToast('Please enter a valid full name (min. 2 characters).', 'danger', 6000);
-        $isValid = false;
-      }
-
-      if ($isValid && !validateEmail($editEmail)) {
-        setToast('Please enter a valid email address.', 'danger', 6000);
-        $isValid = false;
-      }
-
-      if ($isValid) {
-        try {
-          $checkEmail = $db1->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_email = :email AND faculty_id != :id');
-          $checkEmail->bindValue(':email', $editEmail, PDO::PARAM_STR);
-          $checkEmail->bindValue(':id',    $editId,    PDO::PARAM_INT);
-          $checkEmail->execute();
-          if ($checkEmail->fetch()) {
-            setToast('This email address is already in use by another faculty member.', 'danger', 6000);
-            $isValid = false;
-          }
-        }
-        catch (PDOException) {
-          setToast('An error occurred during validation. Please try again.', 'danger', 6000);
-          $isValid = false;
-        }
-      }
-
-      $finalUsername = !empty($editUsername) ? $editUsername : null;
-      $finalBio      = !empty($editBio)      ? $editBio      : null;
-
-      if ($isValid && $finalUsername !== null) {
-        try {
-          $checkUsername = $db1->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_username = :un AND faculty_id != :id');
-          $checkUsername->bindValue(':un',  $finalUsername, PDO::PARAM_STR);
-          $checkUsername->bindValue(':id',  $editId,        PDO::PARAM_INT);
-          $checkUsername->execute();
-          if ($checkUsername->fetch()) {
-            setToast('This username is already taken by another faculty member.', 'danger', 6000);
-            $isValid = false;
-          }
-        }
-        catch (PDOException) {
-          setToast('An error occurred during validation. Please try again.', 'danger', 6000);
-          $isValid = false;
-        }
-      }
-
-      if ($isValid) {
-        $currentAttempt = 0;
-        $maxRetries     = 3;
-
-        while ($currentAttempt < $maxRetries) {
-          try {
-            $db1->beginTransaction();
-
-            $STMT_updateFacultyDetails = 'UPDATE faculty_details
-                                          SET faculty_name     = :name,
-                                              faculty_email    = :email,
-                                              faculty_username = :username,
-                                              faculty_bio      = :bio
-                                          WHERE faculty_id = :id
-                                          LIMIT 1';
-            $updateFacultyDetails = $db1->prepare($STMT_updateFacultyDetails);
-            $updateFacultyDetails->bindValue(':name',     $editName,      PDO::PARAM_STR);
-            $updateFacultyDetails->bindValue(':email',    $editEmail,     PDO::PARAM_STR);
-            $updateFacultyDetails->bindValue(':username', $finalUsername, $finalUsername ? PDO::PARAM_STR : PDO::PARAM_NULL);
-            $updateFacultyDetails->bindValue(':bio',      $finalBio,      $finalBio      ? PDO::PARAM_STR : PDO::PARAM_NULL);
-            $updateFacultyDetails->bindValue(':id',       $editId,        PDO::PARAM_INT);
-            $updateFacultyDetails->execute();
-
-            $STMT_updateFacultyConfig = 'UPDATE faculty_configurations
-                                         SET faculty_account_activation_status = :status,
-                                             faculty_email                   = :email
-                                         WHERE faculty_id = :id
-                                         LIMIT 1';
-            $updateFacultyConfig = $db1->prepare($STMT_updateFacultyConfig);
-            $updateFacultyConfig->bindValue(':status', $editActivation, PDO::PARAM_INT);
-            $updateFacultyConfig->bindValue(':email',  $editEmail,      PDO::PARAM_STR);
-            $updateFacultyConfig->bindValue(':id',     $editId,         PDO::PARAM_INT);
-            $updateFacultyConfig->execute();
-
-            $STMT_updateFacultyTimestamps = 'UPDATE faculty_timestamps
-                                             SET faculty_email = :email
-                                             WHERE faculty_id = :id
-                                             LIMIT 1';
-            $updateFacultyTimestamps = $db1->prepare($STMT_updateFacultyTimestamps);
-            $updateFacultyTimestamps->bindValue(':email', $editEmail, PDO::PARAM_STR);
-            $updateFacultyTimestamps->bindValue(':id',    $editId,    PDO::PARAM_INT);
-            $updateFacultyTimestamps->execute();
-
-            $db1->commit();
-
-            setToast('Faculty record updated successfully.', 'success', 5000);
-            break;
-          }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) $db1->rollBack();
-
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while updating the record. Please contact the system administrator.', 'danger', 7000);
-              logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating faculty record: ' . $ex->getMessage());
-              break;
-            }
-
-            $currentAttempt++;
-            sleep(3);
-          }
-        }
-        if ($currentAttempt >= $maxRetries) {
-          setToast('Failed to update the record after multiple attempts. Please try again later.', 'danger', 7000);
-        }
-      }
-    }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
-
-  // Backend for Faculty Account Deletion (using Dialog Box)
-  if (isset($_POST['deleteFacultyBtn'])) {
-    $deleteId  = (int) (escapeOutput($_POST['delete_faculty_id']) ?? null);
-    $csrfToken = escapeOutput($_POST['csrf_token'])               ?? null;
-
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
-
-      if ($deleteId != null) {
-        $currentAttemptForDeletingFacultyRecord = 0;
-        $maxRetriesForDeletingFacultyRecord     = 3;
-
-        while ($currentAttemptForDeletingFacultyRecord < $maxRetriesForDeletingFacultyRecord) {
-          try {
-            $db1->beginTransaction();
-
-            $generatedUsercode = generateUserCode('faculty', $deleteId);
-            
-            // Multiple Rows to be deleted
-            foreach (['faculty_configurations', 'faculty_timestamps', 'faculty_devicedetails'] as $table) {
-              $stmt = $db1->prepare("DELETE FROM {$table} WHERE faculty_usercode = :usercode");
-              $stmt->bindValue(':usercode', $generatedUsercode, PDO::PARAM_STR);
-              $stmt->execute();
-            }
-
-            // One unique row to be deleted
-            $STMT_deleteFacultyDetails = 'DELETE FROM faculty_details WHERE faculty_usercode = :usercode LIMIT 1';
-            $deleteFacultyDetails = $db1->prepare($STMT_deleteFacultyDetails);
-            $deleteFacultyDetails->bindValue(':usercode', $generatedUsercode, PDO::PARAM_STR);
-            $deleteFacultyDetails->execute();
-
-            $db1->commit();
-
-            setToast('Faculty record deleted successfully.', 'success', 5000);
-            break;
-          }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) $db1->rollBack();
-
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while deleting the record. Please contact the system administrator.', 'danger', 7000);
-              logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error deleting faculty record: ' . $ex->getMessage());
-              break;
-            }
-
-            $currentAttemptForDeletingFacultyRecord++;
-            sleep(3);
-          }
-        }
-        if ($currentAttemptForDeletingFacultyRecord >= $maxRetriesForDeletingFacultyRecord) {
-          setToast('Failed to delete the record after multiple attempts. Please try again later.', 'danger', 7000);
-        }
-      }
-      else setToast('Invalid faculty record. Please try again.', 'danger', 6000);
-    }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
-
-  $facultyRecords = fetchFacultyRecords($db1);
-  $csrfTokenValue = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
 ?>
 
 <?php // Headers 
