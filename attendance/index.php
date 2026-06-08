@@ -11,7 +11,7 @@
 <?php // Backend for Attendance
   if (checkForEquality(checkLoginStatus($db1), true, 'strict')) {
     if (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')) {
-      $csrfTokenValue  = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
+      $csrfToken  = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
       $batchListConfig = retrieveActiveBatchlist($db2);
       $activeBatchList = json_decode((string)($batchListConfig['value'] ?? '[]'), true);
       if (!is_array($activeBatchList)) $activeBatchList = [];
@@ -20,108 +20,105 @@
       $studentsInBatch = [];
       $batchAttendance = [];
 
-      if ($selectedBatch !== null) {
+      if (!checkForEquality($selectedBatch, null, 'strict')) {
         try {
-          $s = $db1->prepare(
-            'SELECT student_usercode, student_name
-             FROM student_details
-             WHERE student_batch_details = :b
-             ORDER BY student_name ASC'
-          );
-          $s->bindValue(':b', $selectedBatch, PDO::PARAM_STR);
-          $s->execute();
-          $studentsInBatch = $s->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException) {}
+          $STMT_retrieveStudentList = $db1->prepare('SELECT student_usercode, student_name FROM student_details WHERE student_batch_details = :batch_code ORDER BY student_name ASC');
+          $STMT_retrieveStudentList->bindValue(':batch_code', $selectedBatch, PDO::PARAM_STR);
+          $STMT_retrieveStudentList->execute();
+          $studentsInBatch = $STMT_retrieveStudentList->fetchAll(PDO::FETCH_ASSOC);
+        } 
+        catch (PDOException) {}
 
         try {
-          $s = $db2->prepare(
-            'SELECT attendance_id, `attendance_.timestamp`, attendance_value
-             FROM attendance_records
-             WHERE attendance_batch_code = :b'
-          );
-          $s->bindValue(':b', $selectedBatch, PDO::PARAM_STR);
-          $s->execute();
-          foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $key = date('Y-d-m', strtotime((string)$row['attendance_.timestamp']));
+          $STMT_retrieveAttendance = $db2->prepare('SELECT attendance_id, `attendance_timestamp`, attendance_value FROM attendance_records WHERE attendance_batch_code = :batch_code');
+          $STMT_retrieveAttendance->bindValue(':batch_code', $selectedBatch, PDO::PARAM_STR);
+          $STMT_retrieveAttendance->execute();
+          foreach ($STMT_retrieveAttendance->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $key = date('Y-d-m', strtotime((string)$row['attendance_timestamp']));
             $batchAttendance[$key] = [
               'id'        => (int)$row['attendance_id'],
               'usercodes' => json_decode((string)$row['attendance_value'], true) ?? [],
             ];
           }
-        } catch (PDOException) {}
+        } 
+        catch (PDOException) {}
       }
 
-      /* CREATE */
+      // CREATE ATTENDANCE RECORDS 
       if (isset($_POST['createAttendance'])) {
-        $csrf = escapeOutput($_POST['csrf_token'] ?? null);
-        if (validateCsrfToken($csrf)) {
+        $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+        if (validateCsrfToken($csrfToken)) {
           unsetCsrfToken();
-          $postBatch    = escapeOutput($_POST['attendance_batch'] ?? '');
-          $postDate     = escapeOutput($_POST['attendance_date']  ?? '');
-          $presentCodes = array_values(array_map('strval', (array)($_POST['present_students'] ?? [])));
-          $ts           = strtotime((string)$postDate);
 
-          if (!$ts || !$postBatch) {
+          $postBatch           = escapeOutput($_POST['attendance_batch'] ?? '');
+          $postDate            = escapeOutput($_POST['attendance_date']  ?? '');
+          $presentStudentCodes = array_values(array_map('strval', (array)($_POST['present_students'] ?? [])));
+          $selectedTimestamp   = strtotime((string)$postDate);
+
+          if (!$selectedTimestamp || !$postBatch) {
             setToast('Invalid batch or date.', 'danger', 5000);
-          } else {
-            $dupId = false;
+          } 
+          else {
+            $checkAttendanceRecordPresence = false;
             try {
-              $check = $db2->prepare(
-                "SELECT attendance_id FROM attendance_records
-                 WHERE attendance_batch_code = :b AND `attendance_.timestamp` LIKE :d LIMIT 1"
-              );
-              $check->execute([':b' => $postBatch, ':d' => date('d/m/Y', $ts) . '%']);
-              $dupId = $check->fetchColumn();
-            } catch (PDOException) {}
+              $checkAttendanceRecord = $db2->prepare("SELECT attendance_id FROM attendance_records WHERE attendance_batch_code = :batch_code AND `attendance_timestamp` LIKE :date_pattern LIMIT 1");
+              $checkAttendanceRecord->execute([':batch_code' => $postBatch, ':date_pattern' => date('d/m/Y', $selectedTimestamp) . '%']);
+              $checkAttendanceRecordPresence = $checkAttendanceRecord->fetchColumn();
+            } 
+            catch (PDOException) {}
 
-            if ($dupId !== false) {
+            if ($checkAttendanceRecordPresence !== false) {
               setToast('Attendance for this date already exists. Use Edit instead.', 'warning', 6000);
-            } else {
-              $fmtTs = getCurrentTimestamp();
-              $val   = json_encode($presentCodes);
-              $att   = 0;
-              while ($att < 3) {
+            } 
+            else {
+              date_default_timezone_set('Asia/Kolkata');
+
+              $formattedSelectedTimestamp = date('d/m/Y', $selectedTimestamp) . ' ' . date('H:i:s');
+              $attendanceValues           = json_encode($presentStudentCodes);
+
+              $currentAttemptForUploadingAttendanceRecord   = 0;
+              while ($currentAttemptForUploadingAttendanceRecord < 3) {
                 try {
-                  $s = $db2->prepare(
-                    'INSERT INTO attendance_records
-                     (attendance_batch_code, `attendance_.timestamp`, attendance_value)
-                     VALUES (:b, :t, :v)'
+                  $STMT_uploadAttendanceRecord = $db2->prepare('INSERT INTO attendance_records (attendance_batch_code, `attendance_timestamp`, attendance_value) VALUES (:attendance_batch_code, :attendance_timestamp, :attendance_value)'
                   );
-                  $s->execute([':b' => $postBatch, ':t' => $fmtTs, ':v' => $val]);
+                  $STMT_uploadAttendanceRecord->execute([':attendance_batch_code' => $postBatch, ':attendance_timestamp' => $formattedSelectedTimestamp, ':attendance_value' => $attendanceValues]);
                   setToast('Attendance created successfully.', 'success', 5000);
                   redirectTo('./?batch=' . rawurlencode($postBatch), 0);
                   break;
-                } catch (PDOException $ex) {
+                } 
+                catch (PDOException $ex) {
                   if (!isRetryablePdoException($ex)) {
                     setToast('Error creating attendance. Contact administrator.', 'danger', 7000);
                     logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Create attendance: ' . $ex->getMessage());
                     break;
                   }
-                  $att++; sleep(3);
+                  $currentAttemptForUploadingAttendanceRecord++; 
+                  sleep(3);
                 }
               }
-              if ($att >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
+              if ($currentAttemptForUploadingAttendanceRecord >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
             }
           }
         } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
 
-      /* UPDATE */
+      // UPDATE ATTENDANCE RECORDS
       if (isset($_POST['updateAttendance'])) {
-        $csrf = escapeOutput($_POST['csrf_token'] ?? null);
-        if (validateCsrfToken($csrf)) {
+        $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+        if (validateCsrfToken($csrfToken)) {
           unsetCsrfToken();
-          $postBatch    = escapeOutput($_POST['attendance_batch'] ?? '');
-          $postId       = (int)($_POST['attendance_id'] ?? 0);
-          $presentCodes = array_values(array_map('strval', (array)($_POST['present_students'] ?? [])));
-          $val = json_encode($presentCodes);
-          $att = 0;
-          while ($att < 3) {
+          
+          $postBatch           = escapeOutput($_POST['attendance_batch'] ?? '');
+          $postId              = (int)($_POST['attendance_id'] ?? 0);
+          $presentStudentCodes = array_values(array_map('strval', (array)($_POST['present_students'] ?? [])));
+          $attendanceValues   = json_encode($presentStudentCodes);
+          $currentAttemptForUpdatingAttendanceRecord = 0;
+          while ($currentAttemptForUpdatingAttendanceRecord < 3) {
             try {
-              $s = $db2->prepare(
-                'UPDATE attendance_records SET attendance_value = :v WHERE attendance_id = :id LIMIT 1'
+              $STMT_updateAttendanceRecord = $db2->prepare(
+                'UPDATE attendance_records SET attendance_value = :attendance_value WHERE attendance_id = :attendance_id LIMIT 1'
               );
-              $s->execute([':v' => $val, ':id' => $postId]);
+              $STMT_updateAttendanceRecord->execute([':attendance_value' => $attendanceValues, ':attendance_id' => $postId]);
               setToast('Attendance updated successfully.', 'success', 5000);
               redirectTo('./?batch=' . rawurlencode($postBatch), 0);
               break;
@@ -131,25 +128,27 @@
                 logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Update attendance: ' . $ex->getMessage());
                 break;
               }
-              $att++; sleep(3);
+              $currentAttemptForUpdatingAttendanceRecord++; 
+              sleep(3);
             }
           }
-          if ($att >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
+          if ($currentAttemptForUpdatingAttendanceRecord >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
         } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
 
-      /* DELETE */
+      // DELETE ATTENDANCE RECORDS
       if (isset($_POST['deleteAttendance'])) {
-        $csrf = escapeOutput($_POST['csrf_token'] ?? null);
-        if (validateCsrfToken($csrf)) {
+        $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+        if (validateCsrfToken($csrfToken)) {
           unsetCsrfToken();
+          
           $postBatch = escapeOutput($_POST['attendance_batch'] ?? '');
           $postId    = (int)($_POST['attendance_id'] ?? 0);
-          $att = 0;
-          while ($att < 3) {
+          $currentAttemptForDeletingAttendanceRecord = 0;
+          while ($currentAttemptForDeletingAttendanceRecord < 3) {
             try {
-              $s = $db2->prepare('DELETE FROM attendance_records WHERE attendance_id = :id LIMIT 1');
-              $s->execute([':id' => $postId]);
+              $STMT_deleteAttendanceRecord = $db2->prepare('DELETE FROM attendance_records WHERE attendance_id = :attendance_id LIMIT 1');
+              $STMT_deleteAttendanceRecord->execute([':attendance_id' => $postId]);
               setToast('Attendance record deleted successfully.', 'success', 5000);
               redirectTo('./?batch=' . rawurlencode($postBatch), 0);
               break;
@@ -159,10 +158,10 @@
                 logAppError($db2, $_SESSION['usercode'], getCurrentURL(), 'DATABASE', 'Delete attendance: ' . $ex->getMessage());
                 break;
               }
-              $att++; sleep(3);
+              $currentAttemptForDeletingAttendanceRecord++; sleep(3);
             }
           }
-          if ($att >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
+          if ($currentAttemptForDeletingAttendanceRecord >= 3) setToast('Failed after multiple attempts. Try again later.', 'danger', 7000);
         } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
     }
@@ -174,24 +173,18 @@
       $year  = (int)date('Y');
 
       try {
-        $s = $db1->prepare(
-          'SELECT student_batch_details FROM student_details WHERE student_usercode = :uc LIMIT 1'
-        );
-        $s->bindValue(':uc', $_SESSION['usercode'], PDO::PARAM_STR);
-        $s->execute();
-        $studentBatch = $s->fetchColumn();
+        $STMT_getStudentBatch = $db1->prepare('SELECT student_batch_details FROM student_details WHERE student_usercode = :uc LIMIT 1');
+        $STMT_getStudentBatch->bindValue(':uc', $_SESSION['usercode'], PDO::PARAM_STR);
+        $STMT_getStudentBatch->execute();
+        $studentBatch = $STMT_getStudentBatch->fetchColumn();
 
         if ($studentBatch) {
-          $s = $db2->prepare(
-            'SELECT `attendance_.timestamp`, attendance_value
-             FROM attendance_records
-             WHERE attendance_batch_code = :b'
-          );
-          $s->bindValue(':b', $studentBatch, PDO::PARAM_STR);
-          $s->execute();
+          $STMT_getAttendanceRecords = $db2->prepare('SELECT `attendance_timestamp`, attendance_value FROM attendance_records WHERE attendance_batch_code = :batch_code');
+          $STMT_getAttendanceRecords->bindValue(':batch_code', $studentBatch, PDO::PARAM_STR);
+          $STMT_getAttendanceRecords->execute();
 
-          foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $key = date('Y-m-d', strtotime((string)$row['attendance_.timestamp']));
+          foreach ($STMT_getAttendanceRecords->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $key = date('Y-d-m', strtotime((string)$row['attendance_timestamp']));
             $ucs = json_decode((string)$row['attendance_value'], true) ?? [];
             if (in_array($_SESSION['usercode'], $ucs, true)) {
               $attendanceByDate[$key] = true;
@@ -205,7 +198,8 @@
             }
           }
         }
-      } catch (PDOException) {}
+      } 
+      catch (PDOException) {}
     }
   }
 ?>
@@ -223,11 +217,11 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<?php if (checkForEquality(checkLoginStatus($db1), true, 'strict')): ?>
+<link rel="stylesheet" href="./attendance-styler.css" />
+
+<?php if (checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In ?>
 
   <?php if (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): // For Admins ?>
-    <link rel="stylesheet" href="./attendance-styler.css" />
-
     <section class="section-border border-primary">
       <div class="container-xxl d-flex flex-column">
         <div class="row align-items-start justify-content-center gx-0 min-vh-100">
@@ -301,7 +295,7 @@
                       <input type="hidden" name="attendance_batch" value="<?= htmlspecialchars($selectedBatch, ENT_QUOTES, 'UTF-8'); ?>">
                       <input type="hidden" name="attendance_date"  id="dialogDate">
                       <input type="hidden" name="attendance_id"    id="dialogRecordId">
-                      <input type="hidden" name="csrf_token"       value="<?= $csrfTokenValue; ?>">
+                      <input type="hidden" name="csrf_token"       value="<?= $csrfToken; ?>">
 
                       <div class="d-flex align-items-center justify-content-between mb-2">
                         <label class="fw-semibold fs-sm">Students Present</label>
@@ -334,7 +328,7 @@
                       </p>
                       <input type="hidden" name="attendance_batch" value="<?= htmlspecialchars($selectedBatch, ENT_QUOTES, 'UTF-8'); ?>">
                       <input type="hidden" name="attendance_id"    id="deleteConfirmId">
-                      <input type="hidden" name="csrf_token"       value="<?= $csrfTokenValue; ?>">
+                      <input type="hidden" name="csrf_token"       value="<?= $csrfToken; ?>">
                     </div>
                     <div class="ci-dialog__footer">
                       <button type="button"  class="btn btn-outline-secondary rounded-pill px-4" onclick="closeDialog('deleteConfirmDialog')">Cancel</button>
@@ -351,7 +345,77 @@
       </div>
     </section>
 
-    <script>
+  <?php elseif (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): // For Students ?>
+    <section class="section-border border-primary min-vh-100 d-flex align-items-center">
+      <div class="container-xl">
+        <div class="row justify-content-center">
+          <div class="col-12 col-lg-9 py-8">
+            <div class="mx-auto my-10 ff-inter" style="max-width: 40rem;">
+              <div class="d-flex row align-items-center mb-3 text-center">
+                <button type="button" class="col-auto btn btn-xs btn-light btn-outline-light" id="prevMonth">
+                  <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5303 5.46967C10.8232 5.76256 10.8232 6.23744 10.5303 6.53033L5.81066 11.25H20C20.4142 11.25 20.75 11.5858 20.75 12C20.75 12.4142 20.4142 12.75 20 12.75H5.81066L10.5303 17.4697C10.8232 17.7626 10.8232 18.2374 10.5303 18.5303C10.2374 18.8232 9.76256 18.8232 9.46967 18.5303L3.46967 12.5303C3.17678 12.2374 3.17678 11.7626 3.46967 11.4697L9.46967 5.46967C9.76256 5.17678 10.2374 5.17678 10.5303 5.46967Z" fill="#1C274C"/>
+                  </svg>
+                </button>
+                <div class="col fw-bold" id="calendarTitle"></div>
+                <button type="button" class="col-auto btn btn-xs border border-primary" id="nextMonth">
+                  <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M13.4697 5.46967C13.7626 5.17678 14.2374 5.17678 14.5303 5.46967L20.5303 11.4697C20.8232 11.7626 20.8232 12.2374 20.5303 12.5303L14.5303 18.5303C14.2374 18.8232 13.7626 18.8232 13.4697 18.5303C13.1768 18.2374 13.1768 17.7626 13.4697 17.4697L18.1893 12.75H4C3.58579 12.75 3.25 12.4142 3.25 12C3.25 11.5858 3.58579 11.25 4 11.25H18.1893L13.4697 6.53033C13.1768 6.23744 13.1768 5.76256 13.4697 5.46967Z" fill="#1C274C"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="calendar-grid mb-10" id="calendarGrid"></div>
+              <div id="calendar-data">
+                <p class="my-1">Days present this year (<?= date('Y'); ?>): <strong id="yearTotal"></strong> days</p>
+                <p class="my-1">Days present this month (<?= date('F') . ', ' . date('Y'); ?>): <strong id="monthTotal"></strong> days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  <?php else: // Restricted Access for Faculty ?>
+    <section class="section-border border-primary min-vh-100">
+      <div class="container-lg">
+        <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
+          <svg width="100" height="100" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" fill="#000000">
+            <g><path d="M62 52c0 5.5-4.5 10-10 10H12C6.5 62 2 57.5 2 52V12C2 6.5 6.5 2 12 2h40c5.5 0 10 4.5 10 10v40z" fill="#ff002f"></path><path fill="#ffffff" d="M50 21.2L42.8 14L32 24.8L21.2 14L14 21.2L24.8 32L14 42.8l7.2 7.2L32 39.2L42.8 50l7.2-7.2L39.2 32z"></path></g>
+          </svg>
+          <div class="col-12 col-lg-9 col-md-10 px-8 py-8">
+            <h1 class="display-3 fw-bold text-center">Access Denied.</h1>
+            <p class="mb-5 text-center text-body-secondary">Access to this page is restricted.</p>
+            <div class="text-center my-7">
+              <a class="btn btn-primary rounded-pill" href="../dashboard/">Back to Dashboard</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  <?php endif; ?>
+
+<?php elseif (checkForEquality(checkLoginStatus($db1), false, 'strict')): // User Logged Out ?>
+  <section class="section-border border-primary min-vh-100">
+    <div class="container-lg">
+      <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
+        <div class="col-12 col-lg-9 col-md-10 px-8 py-8">
+          <h1 class="display-3 fw-bold text-center">Session Expired.</h1>
+          <p class="mb-5 text-center text-body-secondary">You are currently logged out. Please sign in to access this page.</p>
+          <div class="text-center my-7">
+            <a class="btn btn-primary rounded-pill ff-sourcesans3" href="../login/">Back to Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<?php endif; ?>
+
+<!-- JAVASCRIPTS FOR ATTENDANCE -->
+<?php if(checkForEquality(checkLoginStatus($db1), true, 'strict')): ?>
+  <?php if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
+    <script type="text/javascript">
       const BATCH_STUDENTS   = <?= json_encode(array_values($studentsInBatch), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
       const BATCH_ATTENDANCE = <?= json_encode($batchAttendance,               JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 
@@ -492,39 +556,8 @@
       renderCalendar(curMonth, curYear);
     </script>
 
-  <?php elseif (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): // For Students ?>
-    <link rel="stylesheet" href="./attendance-styler.css">
-
-    <section class="section-border border-primary min-vh-100 d-flex align-items-center">
-      <div class="container-xl">
-        <div class="row justify-content-center">
-          <div class="col-12 col-lg-9 py-8">
-            <div class="mx-auto my-10 ff-inter" style="max-width: 40rem;">
-              <div class="d-flex row align-items-center mb-3 text-center">
-                <button type="button" class="col-auto btn btn-xs btn-light btn-outline-light" id="prevMonth">
-                  <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5303 5.46967C10.8232 5.76256 10.8232 6.23744 10.5303 6.53033L5.81066 11.25H20C20.4142 11.25 20.75 11.5858 20.75 12C20.75 12.4142 20.4142 12.75 20 12.75H5.81066L10.5303 17.4697C10.8232 17.7626 10.8232 18.2374 10.5303 18.5303C10.2374 18.8232 9.76256 18.8232 9.46967 18.5303L3.46967 12.5303C3.17678 12.2374 3.17678 11.7626 3.46967 11.4697L9.46967 5.46967C9.76256 5.17678 10.2374 5.17678 10.5303 5.46967Z" fill="#1C274C"/>
-                  </svg>
-                </button>
-                <div class="col fw-bold" id="calendarTitle"></div>
-                <button type="button" class="col-auto btn btn-xs border border-primary" id="nextMonth">
-                  <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M13.4697 5.46967C13.7626 5.17678 14.2374 5.17678 14.5303 5.46967L20.5303 11.4697C20.8232 11.7626 20.8232 12.2374 20.5303 12.5303L14.5303 18.5303C14.2374 18.8232 13.7626 18.8232 13.4697 18.5303C13.1768 18.2374 13.1768 17.7626 13.4697 17.4697L18.1893 12.75H4C3.58579 12.75 3.25 12.4142 3.25 12C3.25 11.5858 3.58579 11.25 4 11.25H18.1893L13.4697 6.53033C13.1768 6.23744 13.1768 5.76256 13.4697 5.46967Z" fill="#1C274C"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="calendar-grid mb-10" id="calendarGrid"></div>
-              <div id="calendar-data">
-                <p class="my-1">Days present this year (<?= date('Y'); ?>): <strong id="yearTotal"></strong> days</p>
-                <p class="my-1">Days present this month (<?= date('F') . ', ' . date('Y'); ?>): <strong id="monthTotal"></strong> days</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <script>
+  <?php elseif(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
+    <script type="text/javascript">
       window.ATTENDANCE_CONFIG = {
         attendanceDates: <?= json_encode(array_keys($attendanceByDate)); ?>,
         attendanceStats: <?= json_encode($attendanceStats); ?>,
@@ -534,41 +567,8 @@
     </script>
 
     <script src="./attendance-controller.js" defer></script>
-
-  <?php else: // Restricted Access for Faculty ?>
-    <section class="section-border border-primary min-vh-100">
-      <div class="container-lg">
-        <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
-          <svg width="100" height="100" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" fill="#000000">
-            <g><path d="M62 52c0 5.5-4.5 10-10 10H12C6.5 62 2 57.5 2 52V12C2 6.5 6.5 2 12 2h40c5.5 0 10 4.5 10 10v40z" fill="#ff002f"></path><path fill="#ffffff" d="M50 21.2L42.8 14L32 24.8L21.2 14L14 21.2L24.8 32L14 42.8l7.2 7.2L32 39.2L42.8 50l7.2-7.2L39.2 32z"></path></g>
-          </svg>
-          <div class="col-12 col-lg-9 col-md-10 px-8 py-8">
-            <h1 class="display-3 fw-bold text-center">Access Denied.</h1>
-            <p class="mb-5 text-center text-body-secondary">Access to this page is restricted.</p>
-            <div class="text-center my-7">
-              <a class="btn btn-primary rounded-pill" href="../dashboard/">Back to Dashboard</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
+  
   <?php endif; ?>
-
-<?php elseif (checkForEquality(checkLoginStatus($db1), false, 'strict')): ?>
-  <section class="section-border border-primary min-vh-100">
-    <div class="container-lg">
-      <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
-        <div class="col-12 col-lg-9 col-md-10 px-8 py-8">
-          <h1 class="display-3 fw-bold text-center">Session Expired.</h1>
-          <p class="mb-5 text-center text-body-secondary">You are currently logged out. Please sign in to access this page.</p>
-          <div class="text-center my-7">
-            <a class="btn btn-primary rounded-pill ff-sourcesans3" href="../login/">Back to Login</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
 <?php endif; ?>
 

@@ -169,7 +169,7 @@
         else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
       }
 
-      try { // After Button Actions, 
+      try { // After Button Actions, Reload the Approval List
         $STMT_retrieveApprovalsList = 'SELECT * FROM approval_users ORDER BY approval_rate_limiting_timestamp DESC';
         $retrieveApprovalsList      = $db1->prepare($STMT_retrieveApprovalsList);
         $retrieveApprovalsList->execute();
