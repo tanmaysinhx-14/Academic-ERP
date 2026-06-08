@@ -1,7 +1,9 @@
 <?php
   require __DIR__ . '/../bootstrap.php';
 
-  $bootstrapData = bootstrapAccounts();
+  $bootstrapData = bootstrapAccounts([
+    'require_login' => false,
+  ]);
 
   extract($bootstrapData, EXTR_OVERWRITE);
 ?>
@@ -564,14 +566,13 @@
   
   require_once '../components/header.php'; 
   
-  $loginStatus = checkLoginStatus($db1);
-  $passwordResetBackUrl = $loginStatus === true ? '../dashboard/' : '../login/';
-  $passwordResetBackLabel = $loginStatus === true ? 'Dashboard' : 'Login';
-  if (checkForEquality($loginStatus, true, 'strict')) {
+  $passwordResetBackUrl = checkForEquality(checkLoginStatus($db1), true, 'strict') ? '../dashboard/' : '../login/';
+  $passwordResetBackLabel = checkForEquality(checkLoginStatus($db1), true, 'strict') ? 'Dashboard' : 'Login';
+  if (checkForEquality(checkLoginStatus($db1), true, 'strict')) {
     $breadcrumb_url_1 = '../dashboard/';
     $breadcrumb_title_1 = 'Dashboard';
   }
-  elseif (checkForEquality($loginStatus, false, 'strict')) {
+  elseif (checkForEquality(checkLoginStatus($db1), false, 'strict')) {
     $breadcrumb_url_1 = '../login/';
     $breadcrumb_title_1 = 'Login';
   }
@@ -583,7 +584,7 @@
 ?>
 
 <?php if(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_REQUEST_PENDING', 'strict')): ?>
-  <?php if(checkForEquality($loginStatus, true, 'strict')): ?>
+  <?php if(checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In?>
     <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
         <div class="row align-items-center justify-content-center gx-0">
@@ -614,7 +615,7 @@
       </div>
     </section>
 
-  <?php else: ?>
+  <?php else: // User Logged Out ?>
     <section class="section-border border-primary min-vh-100">
       <div class="container d-flex flex-column">
         <div class="row align-items-center justify-content-center gx-0">
