@@ -79,12 +79,12 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary min-vh-100">
+<section class="section-border border-primary">
   <div class="container d-flex flex-column">
-    <div class="gx-0">
-      <div class="d-flex flex-column align-items-center justify-content-center text-center py-8">
+    <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+      <div class="col-12 px-0 px-lg-8 py-8">
         <p class="my-10 mb-4 display-4 fw-bold">
-          <?php if ($currentUserRole === 'student'): ?>
+          <?php if (checkForEquality($currentUserRole, 'student', 'strict')): ?>
             Routine of <?php echo prettyPrintClassCode((string) $selectedBatch); ?>
           <?php else: ?>
             Routine Viewer
@@ -93,31 +93,32 @@
         </p>
 
         <p class="my-5 mb-7 text-gray-800 fs-lg" style="max-width:48rem;">
-          <?php if ($currentUserRole === 'student'): ?>
+          <?php if (checkForEquality($currentUserRole, 'student', 'strict')): ?>
             Your batch routine is shown below. If the sheet takes longer than expected to load, refresh the page or report the issue.
           <?php else: ?>
             Choose a batch to review its published routine. This is useful for faculty planning and admin oversight across active batches.
           <?php endif; ?>
         </p>
 
-        <div class="my-5 mb-7 d-flex flex-wrap row-gap-3 align-items-center justify-content-center">
-          <a class="btn btn-primary rounded-pill mx-2" href="./<?php echo escapeOutput($selectedBatch !== null && $currentUserRole !== 'student' ? '?batch=' . urlencode((string) $selectedBatch) : ''); ?>">
+        <div class="my-5 mb-7 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+          <a class="btn btn-primary rounded-pill mx-2" href="./<?php echo escapeOutput(!is_null($selectedBatch) && !checkForEquality($currentUserRole, 'student', 'strict') ? '?batch=' . urlencode((string) $selectedBatch) : ''); ?>">
             Refresh the Page
           </a>
           <a class="btn btn-primary rounded-pill mx-2" href="../dashboard/">
             Dashboard
           </a>
-          <a class="btn btn-danger rounded-pill mx-2" href="https://wa.me/+919661430521?text=I%27m%20facing%20problems%20with%20the%20Routine%20Link.%20Please%20check%20for%20possible%20issues." target="_blank">
+          <a class="btn btn-danger rounded-pill mx-2" 
+             href="https://wa.me/+919661430521?text=I%27m%20facing%20problems%20with%20the%20Routine%20Link.%20Please%20check%20for%20possible%20issues." target="_blank">
             Report an Issue
           </a>
         </div>
 
-        <?php if ($currentUserRole !== 'student' && $activeBatchList === []): ?>
+        <?php if (!checkForEquality($currentUserRole, 'student', 'strict') && checkForEquality($activeBatchList, [], 'strict')): ?>
           <div class="alert alert-light border text-center px-4 py-3 my-4" style="max-width:42rem;">
             <strong>No active batches are configured yet.</strong>
             Add batches from the admin panel to use the routine viewer here.
           </div>
-        <?php elseif ($currentUserRole !== 'student'): ?>
+        <?php elseif (!checkForEquality($currentUserRole, 'student', 'strict')): ?>
           <form method="GET" action="./" class="w-100 mb-5" style="max-width:34rem;">
             <div class="row g-3 align-items-end justify-content-center">
               <div class="col-12 col-md">
@@ -143,19 +144,19 @@
           </form>
         <?php endif; ?>
 
-        <?php if ($selectedBatch !== null && $selectedRoutineUrl !== null): ?>
+        <?php if (!checkForEquality($selectedBatch, null, 'strict') && !checkForEquality($selectedRoutineUrl, null, 'strict')): ?>
           <iframe class="my-5"
                   width="550"
                   height="750"
                   frameborder="0"
                   src="<?php echo escapeOutput($selectedRoutineUrl); ?>">
           </iframe>
-        <?php elseif ($selectedBatch !== null): ?>
+        <?php elseif (!checkForEquality($selectedBatch, null, 'strict')): ?>
           <div class="alert alert-light border text-center px-4 py-3 my-5" style="max-width:42rem;">
             <strong>Routine not available.</strong>
             The selected batch does not have a published routine link yet.
           </div>
-        <?php elseif ($currentUserRole !== 'student'): ?>
+        <?php elseif (!checkForEquality($currentUserRole, 'student', 'strict')): ?>
           <div class="alert alert-light border text-center px-4 py-3 my-5" style="max-width:42rem;">
             <strong>Select a batch to continue.</strong>
             Published routines for staff will appear here once a batch is chosen.

@@ -737,7 +737,7 @@
 
 <section class="section-border border-primary">
   <div class="container-xxl d-flex flex-column">
-    <div class="row align-items-start justify-content-center gx-0 min-vh-100">
+    <div class="row gx-0 align-items-start justify-content-center min-vh-100">
       <div class="col-12 px-8 py-8">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-6">
           <div>
@@ -841,7 +841,7 @@
                           <div class="text-body-secondary fs-sm"><?php echo ciEscape($displayEmail); ?></div>
                         </td>
                         <td><code class="fs-sm"><?php echo ciEscape($displayUsercode); ?></code></td>
-                        <td><?php echo ciEscape($record['student_batch_details'] ?? ''); ?></td>
+                        <td><?php echo ciEscape(prettyPrintClassCode($record['student_batch_details'] ?? '')); ?></td>
                         <td>
                           <?php if ((int) ($record['student_account_activation_status'] ?? 0) === 1): ?>
                             <span class="badge bg-success-subtle text-success rounded-pill px-3">Active</span>
@@ -1015,9 +1015,9 @@
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold fs-sm mb-1" for="edit_student_batch_details">Batch</label>
           <select class="form-select" id="edit_student_batch_details" name="edit_student_batch_details">
-            <option value="">No Batch Selected</option>
+            <option value="" disabled selected>No Batch Selected</option>
             <?php foreach ($activeBatchList as $batch): ?>
-              <option value="<?php echo ciEscape($batch); ?>"><?php echo ciEscape($batch); ?></option>
+              <option value="<?php echo ciEscape($batch); ?>"><?php echo ciEscape(prettyPrintClassCode($batch)); ?></option>
             <?php endforeach; ?>
           </select>
         </div>

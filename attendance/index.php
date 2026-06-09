@@ -236,7 +236,7 @@
 <?php if (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
   <section class="section-border border-primary">
     <div class="container-xxl d-flex flex-column">
-      <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
         <div class="col-12 px-8 py-8">
 
           <?php if (checkForEquality($selectedBatch, null, 'strict')): ?>
@@ -286,7 +286,7 @@
             <?php else: ?>
 
               <!-- Mode Toggle -->
-              <div class="d-flex gap-2 mb-6">
+              <div class="d-flex gap-2 mb-10">
                 <button type="button"
                         id="btnManageMode"
                         class="btn btn-primary rounded-pill px-4"
@@ -384,13 +384,13 @@
               </div>
 
               <!-- ATTENDANCE VIEW MODE -->
-              <div id="viewPane" class="d-none">
-                <div class="d-flex align-items-center justify-content-between mb-4" style="max-width:420px;">
-                  <button type="button" class="btn btn-sm btn-secondary px-3" id="prevViewMonth">
+              <div id="viewPane" class="w-100 d-none d-flex flex-column align-items-center">
+                <div class="d-flex align-items-center justify-content-between mb-4" style="width: fit-content; min-width: 300px;">
+                  <button type="button" class="col-auto btn btn-sm btn-secondary px-3" id="prevViewMonth">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
-                  <p id="tableTitle" class="fw-bolder text-center mb-0"></p>
-                  <button type="button" class="btn btn-sm btn-secondary px-3" id="nextViewMonth">
+                  <p id="tableTitle" class="col fs-lg fw-bolder text-center mb-3"></p>
+                  <button type="button" class="col-auto btn btn-sm btn-secondary px-3" id="nextViewMonth">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
                 </div>

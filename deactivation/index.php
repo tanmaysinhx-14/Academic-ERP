@@ -115,33 +115,35 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary min-vh-100">
-  <div class="container">
-    <div class="col-12 px-8 py-8">
-      <h1 class="display-4 fw-bold">
-        Are you sure you want to deactivate your account?
-      </h1>
-      <p class="mb-10">
-        Deactivating your account will temporarily suspend access to all associated services for a designated grace period. If the account remains inactive for 30 days, all related data will be permanently deleted from our servers and cannot be restored.
-          <br><br>
-        Signing in before the grace period expires will automatically reactivate your account.
-          <br><br>
-        If you have changed your mind and want to keep using our services, go back to <a href="../dashboard/">Dashboard</a>.
-      </p>
-      
-      <form method="POST" action="./">
-        <input type="hidden"
-                name="csrf_token"
-                value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
-        <div class="d-flex align-items-start gap-3 mb-4">
-          <button class="btn btn-danger lead col-auto"
-                  name="deactivateUserBtn"
-                  type="submit">
-            Deactivate your account
-          </button>
-        </div>
-      </form>
-    </div>
+<section class="section-border border-primary">
+  <div class="container d-flex flex-column">
+    <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+      <div class="col-12 px-8 py-8">
+        <h1 class="display-4 fw-bold">
+          Are you sure you want to deactivate your account?
+        </h1>
+        <p class="mb-10">
+          Deactivating your account will temporarily suspend access to all associated services for a designated grace period. If the account remains inactive for 30 days, all related data will be permanently deleted from our servers and cannot be restored.
+            <br><br>
+          Signing in before the grace period expires will automatically reactivate your account.
+            <br><br>
+          If you have changed your mind and want to keep using our services, go back to <a href="../dashboard/">Dashboard</a>.
+        </p>
+        
+        <form method="POST" action="./">
+          <input type="hidden"
+                  name="csrf_token"
+                  value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
+          <div class="d-flex align-items-start gap-3 mb-4">
+            <button class="btn btn-danger lead col-auto"
+                    name="deactivateUserBtn"
+                    type="submit">
+              Deactivate your account
+            </button>
+          </div>
+        </form>
+      </div>
+  </div>
   </div>
 </section>  
 

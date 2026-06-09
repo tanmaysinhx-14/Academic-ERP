@@ -543,6 +543,18 @@
                       </g>
                     </svg>
                   </div>
+                  <a class="text-decoration-none text-dark lead" href="../courseMaterials/">Course Materials</a>
+                </div>
+                <div class="d-flex my-5">
+                  <div class="badge badge-rounded-circle text-bg-success-subtle mt-1 me-4">
+                    <svg style="position: relative; top: -2px;" width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                      <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                      <g id="SVGRepo_iconCarrier"> 
+                        <path d="M9 6L15 12L9 18" stroke="#1d8b30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path> 
+                      </g>
+                    </svg>
+                  </div>
                   <a class="text-decoration-none text-dark lead" href="../userManager/?view=viewStudents">Student List</a>
                 </div>
                 <div class="d-flex my-5">
@@ -593,6 +605,18 @@
                   </div>
                   <a class="text-decoration-none text-dark lead" href="../facultyManager/">Faculty Manager</a>
                 </div>
+                <div class="d-flex my-5">
+                  <div class="badge badge-rounded-circle text-bg-success-subtle mt-1 me-4">
+                    <svg style="position: relative; top: -2px;" width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                      <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                      <g id="SVGRepo_iconCarrier"> 
+                        <path d="M9 6L15 12L9 18" stroke="#1d8b30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path> 
+                      </g>
+                    </svg>
+                  </div>
+                  <a class="text-decoration-none text-dark lead" href="../userManager/?view=viewStudents">Facuulty List</a>
+                </div>
               </div>
             </div>
           </div>
@@ -640,18 +664,6 @@
                     </svg>
                   </div>
                   <a class="text-decoration-none text-dark lead" href="../notifications/">Notifications</a>
-                </div>
-                <div class="d-flex my-5">
-                  <div class="badge badge-rounded-circle text-bg-success-subtle mt-1 me-4">
-                    <svg style="position: relative; top: -2px;" width="16px" height="16px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                      <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                      <g id="SVGRepo_iconCarrier"> 
-                        <path d="M9 6L15 12L9 18" stroke="#1d8b30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path> 
-                      </g>
-                    </svg>
-                  </div>
-                  <a class="text-decoration-none text-dark lead" href="../profile/">Account Profile</a>
                 </div>
                 <div class="d-flex my-5">
                   <div class="badge badge-rounded-circle text-bg-success-subtle mt-1 me-4">

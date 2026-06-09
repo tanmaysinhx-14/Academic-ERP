@@ -365,7 +365,7 @@
 <?php elseif(checkForEquality($userRecord['student_has_updated_username'], 1, 'strict')): ?>
   <section class="section-border border-primary min-vh-100">  
     <!-- FOR SMALL SCREENS -->  
-    <header class="bg-white pt-9 pb-11 d-md-none">
+    <header class="bg-dark pt-9 pb-11 d-md-none">
       <div class="container-lg px-7">
         <div class="d-flex flex-column">
           <div class="col">

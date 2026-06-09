@@ -36,59 +36,59 @@
   $activeBatchesRaw  = retrieveActiveBatchlist($db2);
   $activeBatchList   = json_decode($activeBatchesRaw['value'] ?? '[]', true) ?: [];
 
-  // --- CREATE ---
+  // Create Notifications
   if (isset($_POST['createNotificationBtn'])) {
-    $heading    = escapeOutput($_POST['notification_heading'])          ?? null;
-    $subheading = escapeOutput($_POST['notification_subheading'])       ?? null;
-    $expiry     = escapeOutput($_POST['notification_expire_timestamp']) ?? null;
-    $role       = escapeOutput($_POST['notification_user_role'])        ?? null;
-    $batches    = ($role === 'student' && isset($_POST['notification_batches']))
+    $notificationHeading    = escapeOutput($_POST['notification_heading'])          ?? null;
+    $notificationSubheading = escapeOutput($_POST['notification_subheading'])       ?? null;
+    $notificationExpiry     = escapeOutput($_POST['notification_expire_timestamp']) ?? null;
+    $notificationRole       = escapeOutput($_POST['notification_user_role'])        ?? null;
+    $batches    = ($notificationRole === 'student' && isset($_POST['notification_batches']))
                     ? array_map('htmlspecialchars', $_POST['notification_batches'])
                     : [];
-    $batchValue = ($role === 'student') ? json_encode($batches) : json_encode([]);
+    $batchValue = ($notificationRole === 'student') ? json_encode($batches) : json_encode([]);
     $csrfToken  = escapeOutput($_POST['csrf_token']) ?? null;
 
     if (validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
-      $isValid = true;
+      $isValidNotification = true;
 
-      if (empty($heading) || strlen($heading) < 3) {
+      if (empty($notificationHeading) || strlen($notificationHeading) < 3) {
         setToast('Heading must be at least 3 characters.', 'danger', 6000);
-        $isValid = false;
+        $isValidNotification = false;
       }
-      if ($isValid && empty($subheading)) {
+      if ($isValidNotification && empty($notificationSubheading)) {
         setToast('Subheading cannot be empty.', 'danger', 6000);
-        $isValid = false;
+        $isValidNotification = false;
       }
-      if ($isValid && empty($expiry)) {
+      if ($isValidNotification && empty($notificationExpiry)) {
         setToast('Please select an expiry date and time.', 'danger', 6000);
-        $isValid = false;
+        $isValidNotification = false;
       }
-      if ($isValid && !in_array($role, ['faculty', 'student'], true)) {
+      if ($isValidNotification && !in_array($notificationRole, ['faculty', 'student'], true)) {
         setToast('Please select a valid target role.', 'danger', 6000);
-        $isValid = false;
+        $isValidNotification = false;
       }
-      if ($isValid && $role === 'student' && empty($batches)) {
+      if ($isValidNotification && $notificationRole === 'student' && empty($batches)) {
         setToast('Please select at least one batch for student notifications.', 'danger', 6000);
-        $isValid = false;
+        $isValidNotification = false;
       }
 
-      if ($isValid) {
-        $attempt    = 0;
-        $maxRetries = 3;
+      if ($isValidNotification) {
+        $currentAttemptForInsertingNotificationRecord = 0;
+        $maxRetriesForInsertingNotificationRecord     = 3;
 
-        while ($attempt < $maxRetries) {
+        while ($currentAttemptForInsertingNotificationRecord < $maxRetriesForInsertingNotificationRecord) {
           try {
-            $stmt = $db2->prepare('INSERT INTO notification_records
-                                    (notification_heading, notification_subheading, notification_expire_timestamp, notification_user_role, notification_batch_value)
-                                    VALUES (:heading, :subheading, :expiry, :role, :batches)');
-            $stmt->bindValue(':heading',    $heading,    PDO::PARAM_STR);
-            $stmt->bindValue(':subheading', $subheading, PDO::PARAM_STR);
-            $stmt->bindValue(':expiry',     $expiry,     PDO::PARAM_STR);
-            $stmt->bindValue(':role',       $role,       PDO::PARAM_STR);
-            $stmt->bindValue(':batches',    $batchValue, PDO::PARAM_STR);
-            $stmt->execute();
+            $STMT_insertNotificationRecord = $db2->prepare('INSERT INTO notification_records
+                                                          (notification_heading, notification_subheading, notification_expire_timestamp, notification_user_role, notification_batch_value)
+                                                          VALUES (:heading, :subheading, :expiry, :role, :batches)');
+            $STMT_insertNotificationRecord->bindValue(':heading',    $notificationHeading,    PDO::PARAM_STR);
+            $STMT_insertNotificationRecord->bindValue(':subheading', $notificationSubheading, PDO::PARAM_STR);
+            $STMT_insertNotificationRecord->bindValue(':expiry',     $notificationExpiry,     PDO::PARAM_STR);
+            $STMT_insertNotificationRecord->bindValue(':role',       $notificationRole,       PDO::PARAM_STR);
+            $STMT_insertNotificationRecord->bindValue(':batches',    $batchValue, PDO::PARAM_STR);
+            $STMT_insertNotificationRecord->execute();
 
             setToast('Notification created successfully.', 'success', 5000);
             break;
@@ -99,11 +99,11 @@
               logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error creating notification: ' . $ex->getMessage());
               break;
             }
-            $attempt++;
+            $currentAttemptForInsertingNotificationRecord++;
             sleep(3);
           }
         }
-        if ($attempt >= $maxRetries) {
+        if ($currentAttemptForInsertingNotificationRecord >= $maxRetriesForInsertingNotificationRecord) {
           setToast('Failed to create notification after multiple attempts. Please try again later.', 'danger', 7000);
         }
       }
@@ -111,38 +111,56 @@
     else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
   }
 
-  // --- EDIT ---
+  // Edit Notifications
   if (isset($_POST['editNotificationBtn'])) {
-    $editId      = (int) (escapeOutput($_POST['edit_notification_id'])          ?? 0);
-    $heading     = escapeOutput($_POST['edit_notification_heading'])             ?? null;
-    $subheading  = escapeOutput($_POST['edit_notification_subheading'])          ?? null;
-    $expiry      = escapeOutput($_POST['edit_notification_expire_timestamp'])    ?? null;
-    $role        = escapeOutput($_POST['edit_notification_user_role'])           ?? null;
-    $batches     = ($role === 'student' && isset($_POST['edit_notification_batches']))
+    $notificationEditID      = (int) (escapeOutput($_POST['edit_notification_id'])          ?? 0);
+    $notificationHeading     = escapeOutput($_POST['edit_notification_heading'])             ?? null;
+    $notificationSubheading  = escapeOutput($_POST['edit_notification_subheading'])          ?? null;
+    $notificationExpiry      = escapeOutput($_POST['edit_notification_expire_timestamp'])    ?? null;
+    $notificationRole        = escapeOutput($_POST['edit_notification_user_role'])           ?? null;
+    $batches     = ($notificationRole === 'student' && isset($_POST['edit_notification_batches']))
                       ? array_map('htmlspecialchars', $_POST['edit_notification_batches'])
                       : [];
-    $batchValue  = ($role === 'student') ? json_encode($batches) : json_encode([]);
+    $batchValue  = ($notificationRole === 'student') ? json_encode($batches) : json_encode([]);
     $csrfToken   = escapeOutput($_POST['csrf_token']) ?? null;
 
     if (validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
-      $isValid = true;
+      $isValidNotification = true;
 
-      if ($editId <= 0) { setToast('Invalid notification record.', 'danger', 6000); $isValid = false; }
-      if ($isValid && (empty($heading) || strlen($heading) < 3)) { setToast('Heading must be at least 3 characters.', 'danger', 6000); $isValid = false; }
-      if ($isValid && empty($subheading)) { setToast('Subheading cannot be empty.', 'danger', 6000); $isValid = false; }
-      if ($isValid && empty($expiry)) { setToast('Please select an expiry date and time.', 'danger', 6000); $isValid = false; }
-      if ($isValid && !in_array($role, ['faculty', 'student'], true)) { setToast('Please select a valid target role.', 'danger', 6000); $isValid = false; }
-      if ($isValid && $role === 'student' && empty($batches)) { setToast('Please select at least one batch for student notifications.', 'danger', 6000); $isValid = false; }
+      if ($notificationEditID <= 0) { 
+        setToast('Invalid notification record.', 'danger', 6000); 
+        $isValidNotification = false; 
+      }
+      if ($isValidNotification && (empty($notificationHeading) || strlen($notificationHeading) < 3)) { 
+        setToast('Heading must be at least 3 characters.', 'danger', 6000); 
+        $isValidNotification = false;
+      }
+      if ($isValidNotification && empty($notificationSubheading)) {
+        setToast('Subheading cannot be empty.', 'danger', 6000);
+        $isValidNotification = false;
+      }
+      if ($isValidNotification && empty($notificationExpiry)) {
+        setToast('Please select an expiry date and time.', 'danger', 6000);
+        $isValidNotification = false;
+      }
+      if ($isValidNotification && !in_array($notificationRole, ['faculty', 'student'], true)) {
+        setToast('Please select a valid target role.', 'danger', 6000);
+        $isValidNotification = false;
+      }
+      if ($isValidNotification && $notificationRole === 'student' && empty($batches)) {
+        setToast('Please select at least one batch for student notifications.', 'danger', 6000);
+        $isValidNotification = false;
+      }
 
-      if ($isValid) {
-        $attempt    = 0;
-        $maxRetries = 3;
+      if ($isValidNotification) {
+        $currentAttemptForUpdatingNotificationRecord = 0;
+        $maxRetriesForUpdatingNotificationRecord = 3;
 
-        while ($attempt < $maxRetries) {
+        while ($currentAttemptForUpdatingNotificationRecord < $maxRetriesForUpdatingNotificationRecord) {
           try {
-            $stmt = $db2->prepare('UPDATE notification_records
+            $STMT_updateNotificationRecord = $db2->prepare('UPDATE notification_records
                                     SET notification_heading             = :heading,
                                         notification_subheading          = :subheading,
                                         notification_expire_timestamp    = :expiry,
@@ -150,13 +168,13 @@
                                         notification_batch_value         = :batches
                                     WHERE id = :id
                                     LIMIT 1');
-            $stmt->bindValue(':heading',    $heading,    PDO::PARAM_STR);
-            $stmt->bindValue(':subheading', $subheading, PDO::PARAM_STR);
-            $stmt->bindValue(':expiry',     $expiry,     PDO::PARAM_STR);
-            $stmt->bindValue(':role',       $role,       PDO::PARAM_STR);
-            $stmt->bindValue(':batches',    $batchValue, PDO::PARAM_STR);
-            $stmt->bindValue(':id',         $editId,     PDO::PARAM_INT);
-            $stmt->execute();
+            $STMT_updateNotificationRecord->bindValue(':heading',    $heading,    PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':subheading', $subheading, PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':expiry',     $expiry,     PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':role',       $role,       PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':batches',    $batchValue, PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':id',         $editId,     PDO::PARAM_INT);
+            $STMT_updateNotificationRecord->execute();
 
             setToast('Notification updated successfully.', 'success', 5000);
             break;
@@ -167,11 +185,11 @@
               logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating notification: ' . $ex->getMessage());
               break;
             }
-            $attempt++;
+            $currentAttemptForUpdatingNotificationRecord++;
             sleep(3);
           }
         }
-        if ($attempt >= $maxRetries) {
+        if ($currentAttemptForUpdatingNotificationRecord >= $maxRetriesForUpdatingNotificationRecord) {
           setToast('Failed to update notification after multiple attempts. Please try again later.', 'danger', 7000);
         }
       }
@@ -179,23 +197,23 @@
     else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
   }
 
-  // --- DELETE ---
+  // Delete Notifications
   if (isset($_POST['deleteNotificationBtn'])) {
-    $deleteId  = (int) (escapeOutput($_POST['delete_notification_id']) ?? 0);
+    $notificationDeleteID  = (int) (escapeOutput($_POST['delete_notification_id']) ?? 0);
     $csrfToken = escapeOutput($_POST['csrf_token']) ?? null;
 
     if (validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
-      if ($deleteId > 0) {
-        $attempt    = 0;
-        $maxRetries = 3;
+      if ($notificationDeleteID > 0) {
+        $currentAttemptForDeletingNotificationRecord = 0;
+        $maxRetriesForDeletingNotificationRecord = 3;
 
-        while ($attempt < $maxRetries) {
+        while ($currentAttemptForDeletingNotificationRecord < $maxRetriesForDeletingNotificationRecord) {
           try {
-            $stmt = $db2->prepare('DELETE FROM notification_records WHERE id = :id LIMIT 1');
-            $stmt->bindValue(':id', $deleteId, PDO::PARAM_INT);
-            $stmt->execute();
+            $STMT_deleteNotificationRecord = $db2->prepare('DELETE FROM notification_records WHERE id = :id LIMIT 1');
+            $STMT_deleteNotificationRecord->bindValue(':id', $notificationDeleteID, PDO::PARAM_INT);
+            $STMT_deleteNotificationRecord->execute();
 
             setToast('Notification deleted successfully.', 'success', 5000);
             break;
@@ -206,11 +224,11 @@
               logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error deleting notification: ' . $ex->getMessage());
               break;
             }
-            $attempt++;
+            $currentAttemptForDeletingNotificationRecord++;
             sleep(3);
           }
         }
-        if ($attempt >= $maxRetries) {
+        if ($currentAttemptForDeletingNotificationRecord >= $maxRetriesForDeletingNotificationRecord) {
           setToast('Failed to delete notification after multiple attempts. Please try again later.', 'danger', 7000);
         }
       }
@@ -237,247 +255,249 @@
 ?>
 
 <section class="section-border border-primary">
-  <div class="container-fluid px-4 px-lg-6 py-7">
+  <div class="container-xxl d-flex flex-column">
 
-    <div class="row mb-5">
-      <div class="col-12">
-        <h2 class="fw-bold mb-1">Notification Manager</h2>
-        <p class="text-body-secondary mb-0">Create and manage notifications for faculty and student batches.</p>
-      </div>
-    </div>
-
-    <div class="row g-4 align-items-start">
-
-      <!-- LEFT: Records Table -->
-      <div class="col-12 col-lg-7 col-xl-8">
-        <div class="card border shadow-lg">
-          <div class="card-header py-3">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-              <div>
-                <h3 class="mb-0 fw-semibold">Notification Records</h3>
-                <small class="text-body-secondary">All active and scheduled notifications</small>
-              </div>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 fs-sm" id="notifCountBadge">
-                <?php echo count($notificationRecords); ?> <?php echo count($notificationRecords) === 1 ? 'Record' : 'Records'; ?>
-              </span>
-            </div>
-
-            <?php if (!empty($notificationRecords)): ?>
-            <div class="position-relative">
-              <span class="material-symbols-outlined position-absolute text-body-tertiary"
-                    style="top:50%;right:1rem;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">search</span>
-              <input type="search"
-                      id="notifSearchInput"
-                      class="form-control ps-5"
-                      placeholder="Search by heading or subheading…"
-                      autocomplete="off" />
-            </div>
-            <?php endif; ?>
-          </div>
-
-          <div class="card-body p-0">
-            <?php if (empty($notificationRecords)): ?>
-              <div class="text-center py-7 px-4">
-                <span class="material-symbols-outlined text-body-tertiary mb-3" style="font-size:3rem;">notifications_off</span>
-                <p class="fw-semibold mb-1">No Notifications Found</p>
-                <p class="text-body-secondary fs-sm mb-0">Use the form on the right to create the first notification.</p>
-              </div>
-            <?php else: ?>
-              <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="notifTable">
-                  <thead class="table-light">
-                    <tr>
-                      <th class="ps-4 py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Notification</th>
-                      <th class="py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Target</th>
-                      <th class="py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Expires</th>
-                      <th class="pe-4 py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="notifTableBody">
-                    <?php foreach ($notificationRecords as $record):
-                      $notifId         = (int) ($record['id'] ?? 0);
-                      $displayHeading  = htmlspecialchars($record['notification_heading']          ?? '—', ENT_QUOTES, 'UTF-8');
-                      $displaySub      = htmlspecialchars($record['notification_subheading']       ?? '—', ENT_QUOTES, 'UTF-8');
-                      $displayExpiry   = htmlspecialchars($record['notification_expire_timestamp'] ?? '—', ENT_QUOTES, 'UTF-8');
-                      $displayRole     = htmlspecialchars($record['notification_user_role']        ?? '—', ENT_QUOTES, 'UTF-8');
-                      $rawBatches      = json_decode($record['notification_batch_value'] ?? '[]', true) ?: [];
-                      $batchLabels     = array_map('formatBatchLabel', $rawBatches);
-                      $isExpired       = !empty($displayExpiry) && strtotime($displayExpiry) < time();
-                      $batchDataAttr   = htmlspecialchars(json_encode($rawBatches), ENT_QUOTES, 'UTF-8');
-                    ?>
-                    <tr data-search-heading="<?php echo strtolower($displayHeading); ?>"
-                        data-search-sub="<?php echo strtolower($displaySub); ?>">
-                      <td class="ps-4 py-3">
-                        <div class="fw-semibold lh-sm"><?php echo $displayHeading; ?></div>
-                        <div class="text-body-secondary fs-xs mt-1"><?php echo $displaySub; ?></div>
-                      </td>
-                      <td class="py-3">
-                        <?php if ($displayRole === 'faculty'): ?>
-                          <span class="badge bg-info-subtle text-info rounded-pill px-3">Faculty</span>
-                        <?php else: ?>
-                          <div>
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 mb-1">Students</span>
-                            <?php if (!empty($batchLabels)): ?>
-                              <div class="fs-xs text-body-tertiary"><?php echo implode(', ', array_map('htmlspecialchars', $batchLabels)); ?></div>
-                            <?php endif; ?>
-                          </div>
-                        <?php endif; ?>
-                      </td>
-                      <td class="py-3">
-                        <span class="<?php echo $isExpired ? 'text-danger' : 'text-body-secondary'; ?> fs-xs">
-                          <?php echo $displayExpiry; ?>
-                          <?php if ($isExpired): ?>
-                            <span class="badge bg-danger-subtle text-danger rounded-pill px-2 ms-1">Expired</span>
-                          <?php endif; ?>
-                        </span>
-                      </td>
-                      <td class="pe-4 py-3">
-                        <div class="d-flex align-items-center gap-2">
-                          <button type="button"
-                                  class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 px-3"
-                                  onclick="openEditModal(this)"
-                                  data-id="<?php echo $notifId; ?>"
-                                  data-heading="<?php echo $displayHeading; ?>"
-                                  data-sub="<?php echo $displaySub; ?>"
-                                  data-expiry="<?php echo $displayExpiry; ?>"
-                                  data-role="<?php echo $displayRole; ?>"
-                                  data-batches="<?php echo $batchDataAttr; ?>"
-                                  title="Edit this notification">
-                            <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                              <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/>
-                            </svg>
-                            Edit
-                          </button>
-                          <button type="button"
-                                  class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 px-3"
-                                  onclick="openDeleteModal(this)"
-                                  data-id="<?php echo $notifId; ?>"
-                                  data-heading="<?php echo $displayHeading; ?>"
-                                  title="Delete this notification">
-                            <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                              <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                              <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
-                            </svg>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-
-                <div id="noSearchResults" class="text-center py-7 px-4 d-none">
-                  <span class="material-symbols-outlined text-body-tertiary mb-3" style="font-size:3rem;">search_off</span>
-                  <p class="fw-semibold mb-1">No Results Found</p>
-                  <p class="text-body-secondary fs-sm mb-0">No notification matches your search query.</p>
-                </div>
-              </div>
-            <?php endif; ?>
+    <div class="row g-4 align-items-start justify-content-center min-vh-100">
+      <div class="col-12 px-8 py-8">
+        <div class="row mb-5">
+          <div class="col-12">
+            <h2 class="fw-bold mb-1">Notification Manager</h2>
+            <p class="text-body-secondary mb-0">Create and manage notifications for faculty and student batches.</p>
           </div>
         </div>
-      </div>
 
-      <!-- RIGHT: Create Form -->
-      <div class="col-12 col-lg-5 col-xl-4">
-        <form class="d-flex flex-column gap-4" method="POST" action="./">
-
-          <div class="card border shadow-lg">
-            <div class="card-header py-3">
-              <h4 class="mb-0 fw-semibold">New Notification</h4>
-              <small class="text-body-secondary">Fill in the details to publish a notification</small>
-            </div>
-            <div class="card-body p-4 d-flex flex-column gap-3">
-
-              <div>
-                <label class="form-label fw-semibold fs-sm mb-1" for="notification_heading">Heading</label>
-                <input class="form-control"
-                        id="notification_heading"
-                        type="text"
-                        name="notification_heading"
-                        placeholder="Enter notification heading..."
-                        value="<?php echo htmlspecialchars($_POST['notification_heading'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                        required />
-              </div>
-
-              <div>
-                <label class="form-label fw-semibold fs-sm mb-1" for="notification_subheading">Subheading</label>
-                <textarea class="form-control"
-                          id="notification_subheading"
-                          name="notification_subheading"
-                          rows="2"
-                          maxlength="255"
-                          placeholder="Enter notification subheading..."
-                          required><?php echo htmlspecialchars($_POST['notification_subheading'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-              </div>
-
-              <div>
-                <label class="form-label fw-semibold fs-sm mb-1" for="notification_expire_timestamp">Expiry Date &amp; Time</label>
-                <input class="form-control"
-                        id="notification_expire_timestamp"
-                        type="datetime-local"
-                        name="notification_expire_timestamp"
-                        value="<?php echo htmlspecialchars($_POST['notification_expire_timestamp'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                        required />
-              </div>
-
-              <div>
-                <label class="form-label fw-semibold fs-sm mb-1" for="notification_user_role">Target Role</label>
-                <select class="form-select"
-                        id="notification_user_role"
-                        name="notification_user_role"
-                        onchange="toggleBatchSection(this.value, 'create')"
-                        required>
-                  <option value="" disabled <?php echo empty($_POST['notification_user_role']) ? 'selected' : ''; ?>>Select role…</option>
-                  <option value="faculty" <?php echo (($_POST['notification_user_role'] ?? '') === 'faculty') ? 'selected' : ''; ?>>Faculty</option>
-                  <option value="student" <?php echo (($_POST['notification_user_role'] ?? '') === 'student') ? 'selected' : ''; ?>>Student</option>
-                </select>
-              </div>
-
-              <!-- Batch selector (student only) -->
-              <div id="create_batch_section" class="<?php echo (($_POST['notification_user_role'] ?? '') === 'student') ? '' : 'd-none'; ?>">
-                <label class="form-label fw-semibold fs-sm mb-2">Target Batches</label>
-                <?php if (!empty($activeBatchList)): ?>
-                  <div class="border rounded-3 p-3 d-flex flex-column gap-2" style="max-height:200px;overflow-y:auto;">
-                    <?php foreach ($activeBatchList as $batchCode): ?>
-                      <div class="form-check">
-                        <input class="form-check-input"
-                                type="checkbox"
-                                name="notification_batches[]"
-                                id="create_batch_<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>"
-                                value="<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>"
-                                <?php echo (isset($_POST['notification_batches']) && in_array($batchCode, $_POST['notification_batches'])) ? 'checked' : ''; ?> />
-                        <label class="form-check-label fs-sm" for="create_batch_<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>">
-                          <?php echo htmlspecialchars(formatBatchLabel($batchCode), ENT_QUOTES, 'UTF-8'); ?>
-                        </label>
-                      </div>
-                    <?php endforeach; ?>
+        <div class="row g-4">
+          <!-- LEFT: Records Table -->
+          <div class="col-12 col-xl-8">
+            <div class="card border shadow-lg">
+              <div class="card-header py-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                  <div>
+                    <h3 class="mb-0 fw-semibold">Notification Records</h3>
+                    <small class="text-body-secondary">All active and scheduled notifications</small>
                   </div>
-                  <div class="d-flex gap-2 mt-2">
-                    <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none" onclick="toggleAllBatches('create', true)">Select All</button>
-                    <span class="text-body-tertiary fs-xs">·</span>
-                    <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none" onclick="toggleAllBatches('create', false)">Deselect All</button>
-                  </div>
-                <?php else: ?>
-                  <div class="text-body-secondary fs-sm border rounded-3 p-3">
-                    <span class="material-symbols-outlined align-middle" style="font-size:1rem;">info</span>
-                    No active batches found. Please activate batches from the Batchlist Manager first.
-                  </div>
+                  <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 fs-sm" id="notifCountBadge">
+                    <?php echo count($notificationRecords); ?> <?php echo count($notificationRecords) === 1 ? 'Record' : 'Records'; ?>
+                  </span>
+                </div>
+
+                <?php if (!empty($notificationRecords)): ?>
+                <div class="position-relative">
+                  <span class="material-symbols-outlined position-absolute text-body-tertiary"
+                        style="top:50%;right:1rem;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">search</span>
+                  <input type="search"
+                          id="notifSearchInput"
+                          class="form-control ps-5"
+                          placeholder="Search by heading or subheading…"
+                          autocomplete="off" />
+                </div>
                 <?php endif; ?>
               </div>
 
+              <div class="card-body p-0">
+                <?php if (empty($notificationRecords)): ?>
+                  <div class="text-center py-7 px-4">
+                    <span class="material-symbols-outlined text-body-tertiary mb-3" style="font-size:3rem;">notifications_off</span>
+                    <p class="fw-semibold mb-1">No Notifications Found</p>
+                    <p class="text-body-secondary fs-sm mb-0">Use the form on the right to create the first notification.</p>
+                  </div>
+                <?php else: ?>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="notifTable">
+                      <thead class="table-light">
+                        <tr>
+                          <th class="ps-4 py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Notification</th>
+                          <th class="py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Target</th>
+                          <th class="py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Expires</th>
+                          <th class="pe-4 py-3 fw-semibold text-body-secondary text-uppercase fs-xs">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="notifTableBody">
+                        <?php foreach ($notificationRecords as $record):
+                          $notifId         = (int) ($record['id'] ?? 0);
+                          $displayHeading  = htmlspecialchars($record['notification_heading']          ?? '—', ENT_QUOTES, 'UTF-8');
+                          $displaySub      = htmlspecialchars($record['notification_subheading']       ?? '—', ENT_QUOTES, 'UTF-8');
+                          $displayExpiry   = htmlspecialchars($record['notification_expire_timestamp'] ?? '—', ENT_QUOTES, 'UTF-8');
+                          $displayRole     = htmlspecialchars($record['notification_user_role']        ?? '—', ENT_QUOTES, 'UTF-8');
+                          $rawBatches      = json_decode($record['notification_batch_value'] ?? '[]', true) ?: [];
+                          $batchLabels     = array_map('formatBatchLabel', $rawBatches);
+                          $isExpired       = !empty($displayExpiry) && strtotime($displayExpiry) < time();
+                          $batchDataAttr   = htmlspecialchars(json_encode($rawBatches), ENT_QUOTES, 'UTF-8');
+                        ?>
+                        <tr data-search-heading="<?php echo strtolower($displayHeading); ?>"
+                            data-search-sub="<?php echo strtolower($displaySub); ?>">
+                          <td class="ps-4 py-3">
+                            <div class="fw-semibold lh-sm"><?php echo htmlspecialchars_decode($displayHeading, ENT_QUOTES); ?></div>
+                            <div class="text-body-secondary fs-xs mt-1"><?php echo htmlspecialchars_decode($displaySub, ENT_QUOTES); ?></div>
+                          </td>
+                          <td class="py-3">
+                            <?php if ($displayRole === 'faculty'): ?>
+                              <span class="badge bg-info-subtle text-info rounded-pill px-3">Faculty</span>
+                            <?php else: ?>
+                              <div>
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 mb-1">Students</span>
+                                <?php if (!empty($batchLabels)): ?>
+                                  <div class="fs-xs text-body-tertiary"><?php echo implode(', ', array_map('htmlspecialchars', $batchLabels)); ?></div>
+                                <?php endif; ?>
+                              </div>
+                            <?php endif; ?>
+                          </td>
+                          <td class="py-3">
+                            <span class="<?php echo $isExpired ? 'text-danger' : 'text-body-secondary'; ?> fs-xs">
+                              <?php echo $displayExpiry; ?>
+                              <?php if ($isExpired): ?>
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-2 ms-1">Expired</span>
+                              <?php endif; ?>
+                            </span>
+                          </td>
+                          <td class="pe-4 py-3">
+                            <div class="d-flex align-items-center gap-2">
+                              <button type="button"
+                                      class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 px-3"
+                                      onclick="openEditModal(this)"
+                                      data-id="<?php echo $notifId; ?>"
+                                      data-heading="<?php echo $displayHeading; ?>"
+                                      data-sub="<?php echo $displaySub; ?>"
+                                      data-expiry="<?php echo $displayExpiry; ?>"
+                                      data-role="<?php echo $displayRole; ?>"
+                                      data-batches="<?php echo $batchDataAttr; ?>"
+                                      title="Edit this notification">
+                                <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                  <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/>
+                                </svg>
+                                Edit
+                              </button>
+                              <button type="button"
+                                      class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 px-3"
+                                      onclick="openDeleteModal(this)"
+                                      data-id="<?php echo $notifId; ?>"
+                                      data-heading="<?php echo $displayHeading; ?>"
+                                      title="Delete this notification">
+                                <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                  <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                                  <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+
+                    <div id="noSearchResults" class="text-center py-7 px-4 d-none">
+                      <span class="material-symbols-outlined text-body-tertiary mb-3" style="font-size:3rem;">search_off</span>
+                      <p class="fw-semibold mb-1">No Results Found</p>
+                      <p class="text-body-secondary fs-sm mb-0">No notification matches your search query.</p>
+                    </div>
+                  </div>
+                <?php endif; ?>
+              </div>
             </div>
           </div>
 
-          <input type="hidden" name="csrf_token" value="<?php echo $csrfTokenValue; ?>">
+          <!-- RIGHT: Create Form -->
+          <div class="col-12 col-xl-4">
+            <form class="d-flex flex-column gap-4" method="POST" action="./">
 
-          <button class="btn btn-primary rounded-pill w-100" name="createNotificationBtn" type="submit">
-            Publish Notification
-          </button>
+              <div class="card border shadow-lg">
+                <div class="card-header py-3">
+                  <h4 class="mb-0 fw-semibold">New Notification</h4>
+                  <small class="text-body-secondary">Fill in the details to publish a notification</small>
+                </div>
+                <div class="card-body p-4 d-flex flex-column gap-3">
 
-        </form>
+                  <div>
+                    <label class="form-label fw-semibold fs-sm mb-1" for="notification_heading">Heading</label>
+                    <input class="form-control"
+                            id="notification_heading"
+                            type="text"
+                            name="notification_heading"
+                            placeholder="Enter notification heading..."
+                            value="<?php echo htmlspecialchars($_POST['notification_heading'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                            required />
+                  </div>
+
+                  <div>
+                    <label class="form-label fw-semibold fs-sm mb-1" for="notification_subheading">Subheading</label>
+                    <textarea class="form-control"
+                              id="notification_subheading"
+                              name="notification_subheading"
+                              rows="2"
+                              maxlength="255"
+                              placeholder="Enter notification subheading..."
+                              required><?php echo htmlspecialchars($_POST['notification_subheading'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                  </div>
+
+                  <div>
+                    <label class="form-label fw-semibold fs-sm mb-1" for="notification_expire_timestamp">Expiry Date &amp; Time</label>
+                    <input class="form-control"
+                            id="notification_expire_timestamp"
+                            type="datetime-local"
+                            name="notification_expire_timestamp"
+                            value="<?php echo htmlspecialchars($_POST['notification_expire_timestamp'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                            required />
+                  </div>
+
+                  <div>
+                    <label class="form-label fw-semibold fs-sm mb-1" for="notification_user_role">Target Role</label>
+                    <select class="form-select"
+                            id="notification_user_role"
+                            name="notification_user_role"
+                            onchange="toggleBatchSection(this.value, 'create')"
+                            required>
+                      <option value="" disabled <?php echo empty($_POST['notification_user_role']) ? 'selected' : ''; ?>>Select role…</option>
+                      <option value="faculty" <?php echo (($_POST['notification_user_role'] ?? '') === 'faculty') ? 'selected' : ''; ?>>Faculty</option>
+                      <option value="student" <?php echo (($_POST['notification_user_role'] ?? '') === 'student') ? 'selected' : ''; ?>>Student</option>
+                    </select>
+                  </div>
+
+                  <!-- Batch selector (student only) -->
+                  <div id="create_batch_section" class="<?php echo (($_POST['notification_user_role'] ?? '') === 'student') ? '' : 'd-none'; ?>">
+                    <label class="form-label fw-semibold fs-sm mb-2">Target Batches</label>
+                    <?php if (!empty($activeBatchList)): ?>
+                      <div class="border rounded-3 p-3 d-flex flex-column gap-2" style="max-height:200px;overflow-y:auto;">
+                        <?php foreach ($activeBatchList as $batchCode): ?>
+                          <div class="form-check">
+                            <input class="form-check-input"
+                                    type="checkbox"
+                                    name="notification_batches[]"
+                                    id="create_batch_<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>"
+                                    value="<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>"
+                                    <?php echo (isset($_POST['notification_batches']) && in_array($batchCode, $_POST['notification_batches'])) ? 'checked' : ''; ?> />
+                            <label class="form-check-label fs-sm" for="create_batch_<?php echo htmlspecialchars($batchCode, ENT_QUOTES, 'UTF-8'); ?>">
+                              <?php echo htmlspecialchars(formatBatchLabel($batchCode), ENT_QUOTES, 'UTF-8'); ?>
+                            </label>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                      <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none" onclick="toggleAllBatches('create', true)">Select All</button>
+                        <span class="text-body-tertiary fs-xs">·</span>
+                        <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none" onclick="toggleAllBatches('create', false)">Deselect All</button>
+                      </div>
+                    <?php else: ?>
+                      <div class="text-body-secondary fs-sm border rounded-3 p-3">
+                        <span class="material-symbols-outlined align-middle" style="font-size:1rem;">info</span>
+                        No active batches found. Please activate batches from the Batchlist Manager first.
+                      </div>
+                    <?php endif; ?>
+                  </div>
+
+                </div>
+              </div>
+
+              <input type="hidden" name="csrf_token" value="<?php echo $csrfTokenValue; ?>">
+
+              <button class="btn btn-primary rounded-pill w-100" name="createNotificationBtn" type="submit">
+                Publish Notification
+              </button>
+
+            </form>
+          </div>
+        </div>
       </div>
-
     </div>
   </div>
 </section>

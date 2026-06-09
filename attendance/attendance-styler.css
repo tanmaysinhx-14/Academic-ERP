@@ -25,6 +25,9 @@
   z-index: 3;
 }
 
+th {
+  min-width: 40px;
+}
 .attendance-cell.present {
   background-color: #d1e7dd;
   color: #0f5132;

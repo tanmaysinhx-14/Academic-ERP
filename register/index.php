@@ -231,7 +231,7 @@
                                   careerinstitutepatna@gmail.com
                                 </a>
                                 or visit our
-                                <a href="https://careerinstitute.co.in/servicePages/contactUs/"
+                                <a href="https://careerinstitute.co.in/contactUs/"
                                   style="color:#007BFF; text-decoration:none;">Contact Us</a> page.
                               </p>
                             </td>
@@ -403,10 +403,10 @@
   require_once '../components/header.php';
 ?>
 
-<section class="section-border border-primary min-vh-100">
-  <div class="container d-flex flex-column justify-content-center py-10">
-    <div class="row justify-content-center">
-      <div class="col-12 col-xl-8">
+<section class="section-border border-primary">
+  <div class="container d-flex flex-column">
+    <div class="row gx-0 align-items-between justify-content-center min-vh-100">
+      <div class="col-12 col-lg-9 px-0 px-lg-8 py-8">
 
         <p class="display-4 fw-bold text-center">Register</p>
         <p class="text-lead mb-5 text-center text-body-secondary">

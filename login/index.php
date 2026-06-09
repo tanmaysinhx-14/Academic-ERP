@@ -377,9 +377,9 @@
 ?>
 
 <?php if (checkForEquality(checkRememberMeCookiePresence(), true, 'strict')): // REMEMBER ME Cookie Present ?>
-  <section class="section-border border-primary min-vh-100">
+  <section class="section-border border-primary">
     <div class="container d-flex flex-column">
-      <div class="row align-items-center justify-content-center gx-0">
+      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
         <div class="col-12 col-md-9 col-lg-6 py-8 py-md-11 px-5 px-sm-0">
           <h1 class="mb-7 fw-bold text-center">
             Login using Saved User Details
@@ -416,10 +416,10 @@
   </section>
 
 <?php elseif (checkForEquality(checkRememberMeCookiePresence(), false, 'strict')): // REMEMBER ME Cookie Not Present ?>
-  <section class="section-border border-primary min-vh-100">
+  <section class="section-border border-primary">
     <div class="container d-flex flex-column">
-      <div class="row align-items-center justify-content-center gx-0">
-        <div class="col-12 col-lg-6 col-md-9 px-8 px-md-5 py-8 py-md-8">
+      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+        <div class="col-12 col-lg-6 col-md-9 px-8 px-md-5 py-8">
           <h1 class="mb-2 fw-bold text-center">
             Login
           </h1>
