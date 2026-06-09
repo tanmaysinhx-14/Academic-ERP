@@ -16,5 +16,6 @@
   
     <script src="../library/js/vendor.bundle.js"></script>
     <script src="../library/js/theme.bundle.js"></script>
+    <script src="../library/js/utils.js"></script>
   </body>
 </html>
