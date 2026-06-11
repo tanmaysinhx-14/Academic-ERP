@@ -627,7 +627,7 @@
                       </g>
                     </svg>
                   </div>
-                  <a class="text-decoration-none text-dark lead" href="../userManager/?view=viewStudents">Facuulty List</a>
+                  <a class="text-decoration-none text-dark lead" href="../userManager/?view=viewStudents">Faculty List</a>
                 </div>
               </div>
             </div>

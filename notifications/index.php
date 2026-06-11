@@ -602,6 +602,8 @@
   </form>
 </dialog>
 
+<script type="text/javascript" src="../library/js/utils.js"></script>
+
 <script>
   function toggleBatchSection(role, prefix) {
     const section = document.getElementById(prefix + '_batch_section');

@@ -1,58 +1,64 @@
 <?php
-  require __DIR__ . '/../bootstrap.php';
+require __DIR__ . '/../bootstrap.php';
 
-  $bootstrapData = bootstrapAccounts([
-    'require_login' => true,
-    'required_roles' => ['admin'],
-  ]);
+$bootstrapData = bootstrapAccounts([
+  'require_login' => true,
+  'required_roles' => ['admin'],
+]);
 
-  extract($bootstrapData, EXTR_OVERWRITE);
+extract($bootstrapData, EXTR_OVERWRITE);
 ?>
 
 <?php // Backend for User Manager
-  function ciEscape(mixed $value): string {
-    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+function ciEscape(mixed $value): string
+{
+  return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+function ciNullableString(mixed $value): ?string
+{
+  $value = trim((string) ($value ?? ''));
+  return $value === '' ? null : $value;
+}
+
+function ciBindNullableString(PDOStatement $stmt, string $parameter, ?string $value): void
+{
+  $stmt->bindValue($parameter, $value, $value === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+}
+
+function ciJsonForDataset(array $record): string
+{
+  unset(
+    $record['student_password'],
+    $record['faculty_password'],
+    $record['faculty_reference_code'],
+    $record['admin_password'],
+    $record['student_current_active_session'],
+    $record['faculty_current_active_session'],
+    $record['admin_current_active_session']
+  );
+
+  return htmlspecialchars(
+    json_encode($record, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP),
+    ENT_QUOTES,
+    'UTF-8'
+  );
+}
+
+function ciFormatColumnLabel(string $column, ?string $role = null): string
+{
+  if ($role !== null) {
+    $column = preg_replace('/^' . preg_quote($role, '/') . '_/', '', $column);
   }
 
-  function ciNullableString(mixed $value): ?string {
-    $value = trim((string) ($value ?? ''));
-    return $value === '' ? null : $value;
-  }
+  return ucwords(str_replace('_', ' ', $column));
+}
 
-  function ciBindNullableString(PDOStatement $stmt, string $parameter, ?string $value): void {
-    $stmt->bindValue($parameter, $value, $value === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-  }
-
-  function ciJsonForDataset(array $record): string {
-    unset(
-      $record['student_password'],
-      $record['faculty_password'],
-      $record['faculty_reference_code'],
-      $record['admin_password'],
-      $record['student_current_active_session'],
-      $record['faculty_current_active_session'],
-      $record['admin_current_active_session']
-    );
-
-    return htmlspecialchars(
-      json_encode($record, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP),
-      ENT_QUOTES,
-      'UTF-8'
-    );
-  }
-
-  function ciFormatColumnLabel(string $column, ?string $role = null): string {
-    if ($role !== null) {
-      $column = preg_replace('/^' . preg_quote($role, '/') . '_/', '', $column);
-    }
-
-    return ucwords(str_replace('_', ' ', $column));
-  }
-
-  function ciFetchStudentRecords(PDO $db): array {
-    try {
-      $stmt = $db->query(
-        'SELECT sd.student_id,
+function ciFetchStudentRecords(PDO $db): array
+{
+  try {
+    $stmt = $db->query(
+      'SELECT sd.student_id,
                 sd.student_usercode,
                 sd.student_email,
                 sd.student_username,
@@ -81,19 +87,19 @@
         LEFT JOIN student_timestamps st
           ON sd.student_id = st.student_id
         ORDER BY sd.student_id DESC'
-      );
+    );
 
-      return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-    catch (PDOException) {
-      return [];
-    }
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  } catch (PDOException) {
+    return [];
   }
+}
 
-  function ciFetchFacultyRecords(PDO $db): array {
-    try {
-      $stmt = $db->query(
-        'SELECT fd.faculty_id,
+function ciFetchFacultyRecords(PDO $db): array
+{
+  try {
+    $stmt = $db->query(
+      'SELECT fd.faculty_id,
                 fd.faculty_usercode,
                 fd.faculty_email,
                 fd.faculty_username,
@@ -101,7 +107,7 @@
                 fd.faculty_bio,
                 fc.faculty_current_active_session,
                 fc.faculty_account_activation_status,
-                fc.faculty_has_used_account_activation,
+                fc.faculty_batch_list,
                 fc.faculty_has_updated_username,
                 fc.faculty_has_updated_account_profile,
                 fc.faculty_has_opted_email_communication,
@@ -116,19 +122,19 @@
         LEFT JOIN faculty_timestamps ft
           ON fd.faculty_id = ft.faculty_id
         ORDER BY fd.faculty_id DESC'
-      );
+    );
 
-      return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-    catch (PDOException) {
-      return [];
-    }
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  } catch (PDOException) {
+    return [];
   }
+}
 
-  function ciFetchAdminRecords(PDO $db): array {
-    try {
-      $stmt = $db->query(
-        'SELECT admin_id,
+function ciFetchAdminRecords(PDO $db): array
+{
+  try {
+    $stmt = $db->query(
+      'SELECT admin_id,
                 admin_usercode,
                 admin_email,
                 admin_username,
@@ -137,151 +143,151 @@
                 admin_current_active_session
         FROM admin_details
         ORDER BY admin_id DESC'
-      );
+    );
 
-      return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  } catch (PDOException) {
+    return [];
+  }
+}
+
+function ciStudentEmailExists(PDO $db, string $email, int $studentId): bool
+{
+  $stmt = $db->prepare('SELECT student_id FROM student_details WHERE student_email = :email AND student_id != :id LIMIT 1');
+  $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+  $stmt->bindValue(':id', $studentId, PDO::PARAM_INT);
+  $stmt->execute();
+
+  return $stmt->fetchColumn() !== false;
+}
+
+function ciStudentUsernameExists(PDO $db, string $username, int $studentId): bool
+{
+  $stmt = $db->prepare('SELECT student_id FROM student_details WHERE student_username = :username AND student_id != :id LIMIT 1');
+  $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+  $stmt->bindValue(':id', $studentId, PDO::PARAM_INT);
+  $stmt->execute();
+
+  return $stmt->fetchColumn() !== false;
+}
+
+function ciFacultyEmailExists(PDO $db, string $email, int $facultyId): bool
+{
+  $stmt = $db->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_email = :email AND faculty_id != :id LIMIT 1');
+  $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+  $stmt->bindValue(':id', $facultyId, PDO::PARAM_INT);
+  $stmt->execute();
+
+  return $stmt->fetchColumn() !== false;
+}
+
+function ciFacultyUsernameExists(PDO $db, string $username, int $facultyId): bool
+{
+  $stmt = $db->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_username = :username AND faculty_id != :id LIMIT 1');
+  $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+  $stmt->bindValue(':id', $facultyId, PDO::PARAM_INT);
+  $stmt->execute();
+
+  return $stmt->fetchColumn() !== false;
+}
+
+function ciFetchUsercodeById(PDO $db, string $table, string $idColumn, string $usercodeColumn, int $id): ?string
+{
+  $stmt = $db->prepare("SELECT {$usercodeColumn} FROM {$table} WHERE {$idColumn} = :id LIMIT 1");
+  $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+  $stmt->execute();
+
+  $usercode = $stmt->fetchColumn();
+  return is_string($usercode) && $usercode !== '' ? $usercode : null;
+}
+
+$allowedParameter = ['viewStudents', 'viewFaculties', 'viewAdmins', null];
+$viewParameter = $_GET['view'] ?? null;
+
+if (!in_array($viewParameter, $allowedParameter, true)) {
+  redirectTo('./', 0);
+  exit;
+}
+
+if (isset($_POST['viewUserBtn'])) {
+  $selectedUserRole = escapeOutput($_POST['user_role'] ?? null);
+
+  switch ($selectedUserRole) {
+    case 'student':
+      redirectTo('./?view=viewStudents', 0);
+      break;
+    case 'faculty':
+      redirectTo('./?view=viewFaculties', 0);
+      break;
+    case 'admin':
+      redirectTo('./?view=viewAdmins', 0);
+      break;
+    default:
+      redirectTo('./', 0);
+  }
+}
+
+if (isset($_POST['editStudentRecord'])) {
+  $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+
+  if (validateCsrfToken($csrfToken)) {
+    unsetCsrfToken();
+
+    $studentId = (int) ($_POST['edit_student_id'] ?? 0);
+    $studentName = trim((string) ($_POST['edit_student_name'] ?? ''));
+    $studentEmail = trim((string) ($_POST['edit_student_email'] ?? ''));
+    $studentUsername = ciNullableString($_POST['edit_student_username'] ?? null);
+    $studentFatherName = ciNullableString($_POST['edit_student_father_name'] ?? null);
+    $studentGuardianName = ciNullableString($_POST['edit_student_guardian_name'] ?? null);
+    $studentBatchDetails = ciNullableString($_POST['edit_student_batch_details'] ?? null);
+    $studentSchoolName = ciNullableString($_POST['edit_student_school_name'] ?? null);
+    $studentBio = ciNullableString($_POST['edit_student_bio'] ?? null);
+    $activationStatus = isset($_POST['edit_student_account_activation_status']) ? 1 : 0;
+    $emailPreference = isset($_POST['edit_student_has_opted_email_communication']) ? 1 : 0;
+    $malpracticeCounter = max(0, min(9, (int) ($_POST['edit_student_malpractice_counter'] ?? 0)));
+
+    $isValid = true;
+
+    if ($studentId <= 0 || $studentName === '' || strlen($studentName) < 2) {
+      setToast('Please provide a valid student record and name.', 'danger', 6000);
+      $isValid = false;
     }
-    catch (PDOException) {
-      return [];
+
+    if ($isValid && !validateEmail($studentEmail)) {
+      setToast('Please provide a valid student email address.', 'danger', 6000);
+      $isValid = false;
     }
-  }
 
-  function ciStudentEmailExists(PDO $db, string $email, int $studentId): bool {
-    $stmt = $db->prepare('SELECT student_id FROM student_details WHERE student_email = :email AND student_id != :id LIMIT 1');
-    $stmt->bindValue(':email', $email, PDO::PARAM_STR);
-    $stmt->bindValue(':id', $studentId, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchColumn() !== false;
-  }
-
-  function ciStudentUsernameExists(PDO $db, string $username, int $studentId): bool {
-    $stmt = $db->prepare('SELECT student_id FROM student_details WHERE student_username = :username AND student_id != :id LIMIT 1');
-    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-    $stmt->bindValue(':id', $studentId, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchColumn() !== false;
-  }
-
-  function ciFacultyEmailExists(PDO $db, string $email, int $facultyId): bool {
-    $stmt = $db->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_email = :email AND faculty_id != :id LIMIT 1');
-    $stmt->bindValue(':email', $email, PDO::PARAM_STR);
-    $stmt->bindValue(':id', $facultyId, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchColumn() !== false;
-  }
-
-  function ciFacultyUsernameExists(PDO $db, string $username, int $facultyId): bool {
-    $stmt = $db->prepare('SELECT faculty_id FROM faculty_details WHERE faculty_username = :username AND faculty_id != :id LIMIT 1');
-    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-    $stmt->bindValue(':id', $facultyId, PDO::PARAM_INT);
-    $stmt->execute();
-
-    return $stmt->fetchColumn() !== false;
-  }
-
-  function ciFetchUsercodeById(PDO $db, string $table, string $idColumn, string $usercodeColumn, int $id): ?string {
-    $stmt = $db->prepare("SELECT {$usercodeColumn} FROM {$table} WHERE {$idColumn} = :id LIMIT 1");
-    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
-
-    $usercode = $stmt->fetchColumn();
-    return is_string($usercode) && $usercode !== '' ? $usercode : null;
-  }
-
-  $allowedParameter = ['viewStudents', 'viewFaculties', 'viewAdmins', null];
-  $viewParameter = $_GET['view'] ?? null;
-
-  if (!in_array($viewParameter, $allowedParameter, true)) {
-    redirectTo('./', 0);
-    exit;
-  }
-
-  if (isset($_POST['viewUserBtn'])) {
-    $selectedUserRole = escapeOutput($_POST['user_role'] ?? null);
-
-    switch ($selectedUserRole) {
-      case 'student':
-        redirectTo('./?view=viewStudents', 0);
-        break;
-      case 'faculty':
-        redirectTo('./?view=viewFaculties', 0);
-        break;
-      case 'admin':
-        redirectTo('./?view=viewAdmins', 0);
-        break;
-      default:
-        redirectTo('./', 0);
+    if ($isValid && $studentUsername !== null && !validateUsername($studentUsername)) {
+      setToast('Student username must be 3-16 alphanumeric characters and include both letters and numbers.', 'danger', 7000);
+      $isValid = false;
     }
-  }
 
-  if (isset($_POST['editStudentRecord'])) {
-    $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
-
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
-
-      $studentId = (int) ($_POST['edit_student_id'] ?? 0);
-      $studentName = trim((string) ($_POST['edit_student_name'] ?? ''));
-      $studentEmail = trim((string) ($_POST['edit_student_email'] ?? ''));
-      $studentUsername = ciNullableString($_POST['edit_student_username'] ?? null);
-      $studentFatherName = ciNullableString($_POST['edit_student_father_name'] ?? null);
-      $studentGuardianName = ciNullableString($_POST['edit_student_guardian_name'] ?? null);
-      $studentBatchDetails = ciNullableString($_POST['edit_student_batch_details'] ?? null);
-      $studentSchoolName = ciNullableString($_POST['edit_student_school_name'] ?? null);
-      $studentBio = ciNullableString($_POST['edit_student_bio'] ?? null);
-      $activationStatus = isset($_POST['edit_student_account_activation_status']) ? 1 : 0;
-      $usernameStatus = isset($_POST['edit_student_has_updated_username']) ? 1 : 0;
-      $profileStatus = isset($_POST['edit_student_has_updated_account_profile']) ? 1 : 0;
-      $emailPreference = isset($_POST['edit_student_has_opted_email_communication']) ? 1 : 0;
-      $malpracticeCounter = max(0, min(9, (int) ($_POST['edit_student_malpractice_counter'] ?? 0)));
-
-      $isValid = true;
-
-      if ($studentId <= 0 || $studentName === '' || strlen($studentName) < 2) {
-        setToast('Please provide a valid student record and name.', 'danger', 6000);
-        $isValid = false;
-      }
-
-      if ($isValid && !validateEmail($studentEmail)) {
-        setToast('Please provide a valid student email address.', 'danger', 6000);
-        $isValid = false;
-      }
-
-      if ($isValid && $studentUsername !== null && !validateUsername($studentUsername)) {
-        setToast('Student username must be 3-16 alphanumeric characters and include both letters and numbers.', 'danger', 7000);
-        $isValid = false;
-      }
-
-      if ($isValid) {
-        try {
-          if (ciStudentEmailExists($db1, $studentEmail, $studentId)) {
-            setToast('This email address is already used by another student.', 'danger', 6000);
-            $isValid = false;
-          }
-          elseif ($studentUsername !== null && ciStudentUsernameExists($db1, $studentUsername, $studentId)) {
-            setToast('This username is already used by another student.', 'danger', 6000);
-            $isValid = false;
-          }
-        }
-        catch (PDOException) {
-          setToast('Unable to validate the student record. Please try again.', 'danger', 6000);
+    if ($isValid) {
+      try {
+        if (ciStudentEmailExists($db1, $studentEmail, $studentId)) {
+          setToast('This email address is already used by another student.', 'danger', 6000);
+          $isValid = false;
+        } elseif ($studentUsername !== null && ciStudentUsernameExists($db1, $studentUsername, $studentId)) {
+          setToast('This username is already used by another student.', 'danger', 6000);
           $isValid = false;
         }
+      } catch (PDOException) {
+        setToast('Unable to validate the student record. Please try again.', 'danger', 6000);
+        $isValid = false;
       }
+    }
 
-      if ($isValid) {
-        $attempt = 0;
-        $maxRetries = 3;
+    if ($isValid) {
+      $attempt = 0;
+      $maxRetries = 3;
 
-        while ($attempt < $maxRetries) {
-          try {
-            $db1->beginTransaction();
+      while ($attempt < $maxRetries) {
+        try {
+          $db1->beginTransaction();
 
-            $updateDetails = $db1->prepare(
-              'UPDATE student_details
+          $updateDetails = $db1->prepare(
+            'UPDATE student_details
               SET student_email = :email,
                   student_username = :username,
                   student_name = :name,
@@ -292,445 +298,426 @@
                   student_bio = :bio
               WHERE student_id = :id
               LIMIT 1'
-            );
-            $updateDetails->bindValue(':email', $studentEmail, PDO::PARAM_STR);
-            ciBindNullableString($updateDetails, ':username', $studentUsername);
-            $updateDetails->bindValue(':name', $studentName, PDO::PARAM_STR);
-            ciBindNullableString($updateDetails, ':fatherName', $studentFatherName);
-            ciBindNullableString($updateDetails, ':guardianName', $studentGuardianName);
-            ciBindNullableString($updateDetails, ':batchDetails', $studentBatchDetails);
-            ciBindNullableString($updateDetails, ':schoolName', $studentSchoolName);
-            ciBindNullableString($updateDetails, ':bio', $studentBio);
-            $updateDetails->bindValue(':id', $studentId, PDO::PARAM_INT);
-            $updateDetails->execute();
+          );
+          $updateDetails->bindValue(':email', $studentEmail, PDO::PARAM_STR);
+          ciBindNullableString($updateDetails, ':username', $studentUsername);
+          $updateDetails->bindValue(':name', $studentName, PDO::PARAM_STR);
+          ciBindNullableString($updateDetails, ':fatherName', $studentFatherName);
+          ciBindNullableString($updateDetails, ':guardianName', $studentGuardianName);
+          ciBindNullableString($updateDetails, ':batchDetails', $studentBatchDetails);
+          ciBindNullableString($updateDetails, ':schoolName', $studentSchoolName);
+          ciBindNullableString($updateDetails, ':bio', $studentBio);
+          $updateDetails->bindValue(':id', $studentId, PDO::PARAM_INT);
+          $updateDetails->execute();
 
-            $updateConfig = $db1->prepare(
-              'UPDATE student_configurations
+          $updateConfig = $db1->prepare(
+            'UPDATE student_configurations
               SET student_email = :email,
                   student_account_activation_status = :activationStatus,
-                  student_has_updated_username = :usernameStatus,
-                  student_has_updated_account_profile = :profileStatus,
                   student_has_opted_email_communication = :emailPreference,
                   student_malpractice_counter = :malpracticeCounter
               WHERE student_id = :id
               LIMIT 1'
-            );
-            $updateConfig->bindValue(':email', $studentEmail, PDO::PARAM_STR);
-            $updateConfig->bindValue(':activationStatus', $activationStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':usernameStatus', $usernameStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':profileStatus', $profileStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':emailPreference', $emailPreference, PDO::PARAM_INT);
-            $updateConfig->bindValue(':malpracticeCounter', $malpracticeCounter, PDO::PARAM_INT);
-            $updateConfig->bindValue(':id', $studentId, PDO::PARAM_INT);
-            $updateConfig->execute();
+          );
+          $updateConfig->bindValue(':email', $studentEmail, PDO::PARAM_STR);
+          $updateConfig->bindValue(':activationStatus', $activationStatus, PDO::PARAM_INT);
+          $updateConfig->bindValue(':emailPreference', $emailPreference, PDO::PARAM_INT);
+          $updateConfig->bindValue(':malpracticeCounter', $malpracticeCounter, PDO::PARAM_INT);
+          $updateConfig->bindValue(':id', $studentId, PDO::PARAM_INT);
+          $updateConfig->execute();
 
-            $updateTimestamps = $db1->prepare(
-              'UPDATE student_timestamps
+          $updateTimestamps = $db1->prepare(
+            'UPDATE student_timestamps
               SET student_email = :email,
                   student_profile_updating_timestamp = :profileUpdatedAt
               WHERE student_id = :id
               LIMIT 1'
-            );
-            $updateTimestamps->bindValue(':email', $studentEmail, PDO::PARAM_STR);
-            $updateTimestamps->bindValue(':profileUpdatedAt', getCurrentTimestamp(), PDO::PARAM_STR);
-            $updateTimestamps->bindValue(':id', $studentId, PDO::PARAM_INT);
-            $updateTimestamps->execute();
+          );
+          $updateTimestamps->bindValue(':email', $studentEmail, PDO::PARAM_STR);
+          $updateTimestamps->bindValue(':profileUpdatedAt', getCurrentTimestamp(), PDO::PARAM_STR);
+          $updateTimestamps->bindValue(':id', $studentId, PDO::PARAM_INT);
+          $updateTimestamps->execute();
 
-            $updateDeviceDetails = $db1->prepare(
-              'UPDATE student_devicedetails
+          $updateDeviceDetails = $db1->prepare(
+            'UPDATE student_devicedetails
               SET student_email = :email
               WHERE student_id = :id'
-            );
-            $updateDeviceDetails->bindValue(':email', $studentEmail, PDO::PARAM_STR);
-            $updateDeviceDetails->bindValue(':id', $studentId, PDO::PARAM_INT);
-            $updateDeviceDetails->execute();
+          );
+          $updateDeviceDetails->bindValue(':email', $studentEmail, PDO::PARAM_STR);
+          $updateDeviceDetails->bindValue(':id', $studentId, PDO::PARAM_INT);
+          $updateDeviceDetails->execute();
 
-            $db1->commit();
-            setToast('Student record updated successfully.', 'success', 5000);
-            redirectTo('./?view=viewStudents', 0);
+          $db1->commit();
+          setToast('Student record updated successfully.', 'success', 5000);
+          redirectTo('./?view=viewStudents', 0);
+          break;
+        } catch (PDOException $ex) {
+          if ($db1->inTransaction()) {
+            $db1->rollBack();
+          }
+
+          if (!isRetryablePdoException($ex)) {
+            setToast('An error occurred while updating the student record.', 'danger', 7000);
+            logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating student record: ' . $ex->getMessage());
             break;
           }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) {
-              $db1->rollBack();
-            }
 
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while updating the student record.', 'danger', 7000);
-              logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating student record: ' . $ex->getMessage());
-              break;
-            }
-
-            $attempt++;
-            sleep(3);
-          }
+          $attempt++;
+          sleep(3);
         }
+      }
 
-        if ($attempt >= $maxRetries) {
-          setToast('Failed to update the student record after multiple attempts.', 'danger', 7000);
-        }
+      if ($attempt >= $maxRetries) {
+        setToast('Failed to update the student record after multiple attempts.', 'danger', 7000);
       }
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
+  } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+}
 
-  if (isset($_POST['editFacultyRecord'])) {
-    $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+if (isset($_POST['editFacultyRecord'])) {
+  $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
 
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+  if (validateCsrfToken($csrfToken)) {
+    unsetCsrfToken();
 
-      $facultyId = (int) ($_POST['edit_faculty_id'] ?? 0);
-      $facultyName = trim((string) ($_POST['edit_faculty_name'] ?? ''));
-      $facultyEmail = trim((string) ($_POST['edit_faculty_email'] ?? ''));
-      $facultyUsername = ciNullableString($_POST['edit_faculty_username'] ?? null);
-      $facultyBio = ciNullableString($_POST['edit_faculty_bio'] ?? null);
-      $activationStatus = isset($_POST['edit_faculty_account_activation_status']) ? 1 : 0;
-      $usedActivationStatus = isset($_POST['edit_faculty_has_used_account_activation']) ? 1 : 0;
-      $usernameStatus = isset($_POST['edit_faculty_has_updated_username']) ? 1 : 0;
-      $profileStatus = isset($_POST['edit_faculty_has_updated_account_profile']) ? 1 : 0;
-      $emailPreference = isset($_POST['edit_faculty_has_opted_email_communication']) ? 1 : 0;
+    $facultyId = (int) ($_POST['edit_faculty_id'] ?? 0);
+    $facultyName = trim((string) ($_POST['edit_faculty_name'] ?? ''));
+    $facultyEmail = trim((string) ($_POST['edit_faculty_email'] ?? ''));
+    $facultyUsername = ciNullableString($_POST['edit_faculty_username'] ?? null);
+    $facultyBio = ciNullableString($_POST['edit_faculty_bio'] ?? null);
+    $activationStatus = isset($_POST['edit_faculty_account_activation_status']) ? 1 : 0;
+    $emailPreference = isset($_POST['edit_faculty_has_opted_email_communication']) ? 1 : 0;
 
-      $isValid = true;
+    $isValid = true;
 
-      if ($facultyId <= 0 || $facultyName === '' || strlen($facultyName) < 2) {
-        setToast('Please provide a valid faculty record and name.', 'danger', 6000);
-        $isValid = false;
-      }
+    if ($facultyId <= 0 || $facultyName === '' || strlen($facultyName) < 2) {
+      setToast('Please provide a valid faculty record and name.', 'danger', 6000);
+      $isValid = false;
+    }
 
-      if ($isValid && !validateEmail($facultyEmail)) {
-        setToast('Please provide a valid faculty email address.', 'danger', 6000);
-        $isValid = false;
-      }
+    if ($isValid && !validateEmail($facultyEmail)) {
+      setToast('Please provide a valid faculty email address.', 'danger', 6000);
+      $isValid = false;
+    }
 
-      if ($isValid && $facultyUsername !== null && !validateUsername($facultyUsername)) {
-        setToast('Faculty username must be 3-16 alphanumeric characters and include both letters and numbers.', 'danger', 7000);
-        $isValid = false;
-      }
+    if ($isValid && $facultyUsername !== null && !validateUsername($facultyUsername)) {
+      setToast('Faculty username must be 3-16 alphanumeric characters and include both letters and numbers.', 'danger', 7000);
+      $isValid = false;
+    }
+    if ($isValid && empty($editBatches)) {
+      setToast('Please select at least one batch for this faculty member.', 'danger', 6000);
+      $isValid = false;
+    }
 
-      if ($isValid) {
-        try {
-          if (ciFacultyEmailExists($db1, $facultyEmail, $facultyId)) {
-            setToast('This email address is already used by another faculty member.', 'danger', 6000);
-            $isValid = false;
-          }
-          elseif ($facultyUsername !== null && ciFacultyUsernameExists($db1, $facultyUsername, $facultyId)) {
-            setToast('This username is already used by another faculty member.', 'danger', 6000);
-            $isValid = false;
-          }
-        }
-        catch (PDOException) {
-          setToast('Unable to validate the faculty record. Please try again.', 'danger', 6000);
+    if ($isValid) {
+      try {
+        if (ciFacultyEmailExists($db1, $facultyEmail, $facultyId)) {
+          setToast('This email address is already used by another faculty member.', 'danger', 6000);
+          $isValid = false;
+        } elseif ($facultyUsername !== null && ciFacultyUsernameExists($db1, $facultyUsername, $facultyId)) {
+          setToast('This username is already used by another faculty member.', 'danger', 6000);
           $isValid = false;
         }
+      } catch (PDOException) {
+        setToast('Unable to validate the faculty record. Please try again.', 'danger', 6000);
+        $isValid = false;
       }
+    }
 
-      if ($isValid) {
-        $attempt = 0;
-        $maxRetries = 3;
+    if ($isValid) {
+      $attempt = 0;
+      $maxRetries = 3;
 
-        while ($attempt < $maxRetries) {
-          try {
-            $db1->beginTransaction();
+      while ($attempt < $maxRetries) {
+        try {
+          $db1->beginTransaction();
 
-            $updateDetails = $db1->prepare(
-              'UPDATE faculty_details
+          $updateDetails = $db1->prepare(
+            'UPDATE faculty_details
               SET faculty_email = :email,
                   faculty_username = :username,
                   faculty_name = :name,
                   faculty_bio = :bio
               WHERE faculty_id = :id
               LIMIT 1'
-            );
-            $updateDetails->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
-            ciBindNullableString($updateDetails, ':username', $facultyUsername);
-            $updateDetails->bindValue(':name', $facultyName, PDO::PARAM_STR);
-            ciBindNullableString($updateDetails, ':bio', $facultyBio);
-            $updateDetails->bindValue(':id', $facultyId, PDO::PARAM_INT);
-            $updateDetails->execute();
+          );
+          $updateDetails->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
+          ciBindNullableString($updateDetails, ':username', $facultyUsername);
+          $updateDetails->bindValue(':name', $facultyName, PDO::PARAM_STR);
+          ciBindNullableString($updateDetails, ':bio', $facultyBio);
+          $updateDetails->bindValue(':id', $facultyId, PDO::PARAM_INT);
+          $updateDetails->execute();
 
-            $updateConfig = $db1->prepare(
-              'UPDATE faculty_configurations
+          $updateConfig = $db1->prepare(
+            'UPDATE faculty_configurations
               SET faculty_email = :email,
                   faculty_account_activation_status = :activationStatus,
-                  faculty_has_used_account_activation = :usedActivationStatus,
-                  faculty_has_updated_username = :usernameStatus,
-                  faculty_has_updated_account_profile = :profileStatus,
                   faculty_has_opted_email_communication = :emailPreference
               WHERE faculty_id = :id
               LIMIT 1'
-            );
-            $updateConfig->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
-            $updateConfig->bindValue(':activationStatus', $activationStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':usedActivationStatus', $usedActivationStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':usernameStatus', $usernameStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':profileStatus', $profileStatus, PDO::PARAM_INT);
-            $updateConfig->bindValue(':emailPreference', $emailPreference, PDO::PARAM_INT);
-            $updateConfig->bindValue(':id', $facultyId, PDO::PARAM_INT);
-            $updateConfig->execute();
+          );
+          $updateConfig->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
+          $updateConfig->bindValue(':activationStatus', $activationStatus, PDO::PARAM_INT);
+          $updateConfig->bindValue(':emailPreference', $emailPreference, PDO::PARAM_INT);
+          $updateConfig->bindValue(':id', $facultyId, PDO::PARAM_INT);
+          $updateConfig->execute();
 
-            $updateTimestamps = $db1->prepare(
-              'UPDATE faculty_timestamps
+          $updateTimestamps = $db1->prepare(
+            'UPDATE faculty_timestamps
               SET faculty_email = :email
               WHERE faculty_id = :id
               LIMIT 1'
-            );
-            $updateTimestamps->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
-            $updateTimestamps->bindValue(':id', $facultyId, PDO::PARAM_INT);
-            $updateTimestamps->execute();
+          );
+          $updateTimestamps->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
+          $updateTimestamps->bindValue(':id', $facultyId, PDO::PARAM_INT);
+          $updateTimestamps->execute();
 
-            $updateDeviceDetails = $db1->prepare(
-              'UPDATE faculty_devicedetails
+          $updateDeviceDetails = $db1->prepare(
+            'UPDATE faculty_devicedetails
               SET faculty_email = :email
               WHERE faculty_id = :id'
-            );
-            $updateDeviceDetails->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
-            $updateDeviceDetails->bindValue(':id', $facultyId, PDO::PARAM_INT);
-            $updateDeviceDetails->execute();
+          );
+          $updateDeviceDetails->bindValue(':email', $facultyEmail, PDO::PARAM_STR);
+          $updateDeviceDetails->bindValue(':id', $facultyId, PDO::PARAM_INT);
+          $updateDeviceDetails->execute();
 
-            $db1->commit();
-            setToast('Faculty record updated successfully.', 'success', 5000);
-            redirectTo('./?view=viewFaculties', 0);
+          $db1->commit();
+          setToast('Faculty record updated successfully.', 'success', 5000);
+          redirectTo('./?view=viewFaculties', 0);
+          break;
+        } catch (PDOException $ex) {
+          if ($db1->inTransaction()) {
+            $db1->rollBack();
+          }
+
+          if (!isRetryablePdoException($ex)) {
+            setToast('An error occurred while updating the faculty record.', 'danger', 7000);
+            logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating faculty record: ' . $ex->getMessage());
             break;
           }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) {
-              $db1->rollBack();
-            }
 
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while updating the faculty record.', 'danger', 7000);
-              logAppError($db2, null, getCurrentURL(), 'DATABASE', 'Error updating faculty record: ' . $ex->getMessage());
-              break;
-            }
-
-            $attempt++;
-            sleep(3);
-          }
+          $attempt++;
+          sleep(3);
         }
+      }
 
-        if ($attempt >= $maxRetries) {
-          setToast('Failed to update the faculty record after multiple attempts.', 'danger', 7000);
-        }
+      if ($attempt >= $maxRetries) {
+        setToast('Failed to update the faculty record after multiple attempts.', 'danger', 7000);
       }
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
+  } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+}
 
-  if (isset($_POST['deleteStudentRecord'])) {
-    $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+if (isset($_POST['deleteStudentRecord'])) {
+  $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
 
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+  if (validateCsrfToken($csrfToken)) {
+    unsetCsrfToken();
 
-      $studentId = (int) ($_POST['delete_student_id'] ?? 0);
-      $studentUsercode = $studentId > 0
-        ? ciFetchUsercodeById($db1, 'student_details', 'student_id', 'student_usercode', $studentId)
-        : null;
+    $studentId = (int) ($_POST['delete_student_id'] ?? 0);
+    $studentUsercode = $studentId > 0
+      ? ciFetchUsercodeById($db1, 'student_details', 'student_id', 'student_usercode', $studentId)
+      : null;
 
-      if ($studentUsercode === null) {
-        setToast('Invalid student record. Please try again.', 'danger', 6000);
-      }
-      else {
-        $attempt = 0;
-        $maxRetries = 3;
+    if ($studentUsercode === null) {
+      setToast('Invalid student record. Please try again.', 'danger', 6000);
+    } else {
+      $attempt = 0;
+      $maxRetries = 3;
 
-        while ($attempt < $maxRetries) {
-          $db2TransactionStarted = false;
+      while ($attempt < $maxRetries) {
+        $db2TransactionStarted = false;
 
-          try {
-            $db1->beginTransaction();
+        try {
+          $db1->beginTransaction();
 
-            if ($db2 instanceof PDO) {
-              $db2->beginTransaction();
-              $db2TransactionStarted = true;
+          if ($db2 instanceof PDO) {
+            $db2->beginTransaction();
+            $db2TransactionStarted = true;
 
-              foreach ([
+            foreach (
+              [
                 'DELETE FROM attendance_records WHERE student_usercode = :usercode',
                 'DELETE FROM email_records WHERE email_usercode = :usercode',
                 'DELETE FROM app_errorLog WHERE error_usercode = :usercode',
-              ] as $sql) {
-                $stmt = $db2->prepare($sql);
-                $stmt->bindValue(':usercode', $studentUsercode, PDO::PARAM_STR);
-                $stmt->execute();
-              }
-            }
-
-            foreach (['student_devicedetails', 'student_configurations', 'student_timestamps'] as $table) {
-              $stmt = $db1->prepare("DELETE FROM {$table} WHERE student_usercode = :usercode");
+              ] as $sql
+            ) {
+              $stmt = $db2->prepare($sql);
               $stmt->bindValue(':usercode', $studentUsercode, PDO::PARAM_STR);
               $stmt->execute();
             }
+          }
 
-            $deleteDetails = $db1->prepare('DELETE FROM student_details WHERE student_usercode = :usercode LIMIT 1');
-            $deleteDetails->bindValue(':usercode', $studentUsercode, PDO::PARAM_STR);
-            $deleteDetails->execute();
+          foreach (['student_devicedetails', 'student_configurations', 'student_timestamps'] as $table) {
+            $stmt = $db1->prepare("DELETE FROM {$table} WHERE student_usercode = :usercode");
+            $stmt->bindValue(':usercode', $studentUsercode, PDO::PARAM_STR);
+            $stmt->execute();
+          }
 
-            if ($db2TransactionStarted) {
-              $db2->commit();
-            }
+          $deleteDetails = $db1->prepare('DELETE FROM student_details WHERE student_usercode = :usercode LIMIT 1');
+          $deleteDetails->bindValue(':usercode', $studentUsercode, PDO::PARAM_STR);
+          $deleteDetails->execute();
 
-            $db1->commit();
-            setToast('Student record deleted successfully.', 'success', 5000);
-            redirectTo('./?view=viewStudents', 0);
+          if ($db2TransactionStarted) {
+            $db2->commit();
+          }
+
+          $db1->commit();
+          setToast('Student record deleted successfully.', 'success', 5000);
+          redirectTo('./?view=viewStudents', 0);
+          break;
+        } catch (PDOException $ex) {
+          if ($db1->inTransaction()) {
+            $db1->rollBack();
+          }
+          if ($db2TransactionStarted && $db2 instanceof PDO && $db2->inTransaction()) {
+            $db2->rollBack();
+          }
+
+          if (!isRetryablePdoException($ex)) {
+            setToast('An error occurred while deleting the student record.', 'danger', 7000);
+            logAppError($db2, $studentUsercode, getCurrentURL(), 'DATABASE', 'Error deleting student record: ' . $ex->getMessage());
             break;
           }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) {
-              $db1->rollBack();
-            }
-            if ($db2TransactionStarted && $db2 instanceof PDO && $db2->inTransaction()) {
-              $db2->rollBack();
-            }
 
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while deleting the student record.', 'danger', 7000);
-              logAppError($db2, $studentUsercode, getCurrentURL(), 'DATABASE', 'Error deleting student record: ' . $ex->getMessage());
-              break;
-            }
-
-            $attempt++;
-            sleep(3);
-          }
+          $attempt++;
+          sleep(3);
         }
+      }
 
-        if ($attempt >= $maxRetries) {
-          setToast('Failed to delete the student record after multiple attempts.', 'danger', 7000);
-        }
+      if ($attempt >= $maxRetries) {
+        setToast('Failed to delete the student record after multiple attempts.', 'danger', 7000);
       }
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
+  } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+}
 
-  if (isset($_POST['deleteFacultyRecord'])) {
-    $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+if (isset($_POST['deleteFacultyRecord'])) {
+  $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
 
-    if (validateCsrfToken($csrfToken)) {
-      unsetCsrfToken();
+  if (validateCsrfToken($csrfToken)) {
+    unsetCsrfToken();
 
-      $facultyId = (int) ($_POST['delete_faculty_id'] ?? 0);
-      $facultyUsercode = $facultyId > 0
-        ? ciFetchUsercodeById($db1, 'faculty_details', 'faculty_id', 'faculty_usercode', $facultyId)
-        : null;
+    $facultyId = (int) ($_POST['delete_faculty_id'] ?? 0);
+    $facultyUsercode = $facultyId > 0
+      ? ciFetchUsercodeById($db1, 'faculty_details', 'faculty_id', 'faculty_usercode', $facultyId)
+      : null;
 
-      if ($facultyUsercode === null) {
-        setToast('Invalid faculty record. Please try again.', 'danger', 6000);
-      }
-      else {
-        $attempt = 0;
-        $maxRetries = 3;
+    if ($facultyUsercode === null) {
+      setToast('Invalid faculty record. Please try again.', 'danger', 6000);
+    } else {
+      $attempt = 0;
+      $maxRetries = 3;
 
-        while ($attempt < $maxRetries) {
-          $db2TransactionStarted = false;
+      while ($attempt < $maxRetries) {
+        $db2TransactionStarted = false;
 
-          try {
-            $db1->beginTransaction();
+        try {
+          $db1->beginTransaction();
 
-            if ($db2 instanceof PDO) {
-              $db2->beginTransaction();
-              $db2TransactionStarted = true;
+          if ($db2 instanceof PDO) {
+            $db2->beginTransaction();
+            $db2TransactionStarted = true;
 
-              foreach ([
+            foreach (
+              [
                 'DELETE FROM email_records WHERE email_usercode = :usercode',
                 'DELETE FROM app_errorLog WHERE error_usercode = :usercode',
-              ] as $sql) {
-                $stmt = $db2->prepare($sql);
-                $stmt->bindValue(':usercode', $facultyUsercode, PDO::PARAM_STR);
-                $stmt->execute();
-              }
-            }
-
-            foreach (['faculty_devicedetails', 'faculty_configurations', 'faculty_timestamps'] as $table) {
-              $stmt = $db1->prepare("DELETE FROM {$table} WHERE faculty_usercode = :usercode");
+              ] as $sql
+            ) {
+              $stmt = $db2->prepare($sql);
               $stmt->bindValue(':usercode', $facultyUsercode, PDO::PARAM_STR);
               $stmt->execute();
             }
+          }
 
-            $deleteDetails = $db1->prepare('DELETE FROM faculty_details WHERE faculty_usercode = :usercode LIMIT 1');
-            $deleteDetails->bindValue(':usercode', $facultyUsercode, PDO::PARAM_STR);
-            $deleteDetails->execute();
+          foreach (['faculty_devicedetails', 'faculty_configurations', 'faculty_timestamps'] as $table) {
+            $stmt = $db1->prepare("DELETE FROM {$table} WHERE faculty_usercode = :usercode");
+            $stmt->bindValue(':usercode', $facultyUsercode, PDO::PARAM_STR);
+            $stmt->execute();
+          }
 
-            if ($db2TransactionStarted) {
-              $db2->commit();
-            }
+          $deleteDetails = $db1->prepare('DELETE FROM faculty_details WHERE faculty_usercode = :usercode LIMIT 1');
+          $deleteDetails->bindValue(':usercode', $facultyUsercode, PDO::PARAM_STR);
+          $deleteDetails->execute();
 
-            $db1->commit();
-            setToast('Faculty record deleted successfully.', 'success', 5000);
-            redirectTo('./?view=viewFaculties', 0);
+          if ($db2TransactionStarted) {
+            $db2->commit();
+          }
+
+          $db1->commit();
+          setToast('Faculty record deleted successfully.', 'success', 5000);
+          redirectTo('./?view=viewFaculties', 0);
+          break;
+        } catch (PDOException $ex) {
+          if ($db1->inTransaction()) {
+            $db1->rollBack();
+          }
+          if ($db2TransactionStarted && $db2 instanceof PDO && $db2->inTransaction()) {
+            $db2->rollBack();
+          }
+
+          if (!isRetryablePdoException($ex)) {
+            setToast('An error occurred while deleting the faculty record.', 'danger', 7000);
+            logAppError($db2, $facultyUsercode, getCurrentURL(), 'DATABASE', 'Error deleting faculty record: ' . $ex->getMessage());
             break;
           }
-          catch (PDOException $ex) {
-            if ($db1->inTransaction()) {
-              $db1->rollBack();
-            }
-            if ($db2TransactionStarted && $db2 instanceof PDO && $db2->inTransaction()) {
-              $db2->rollBack();
-            }
 
-            if (!isRetryablePdoException($ex)) {
-              setToast('An error occurred while deleting the faculty record.', 'danger', 7000);
-              logAppError($db2, $facultyUsercode, getCurrentURL(), 'DATABASE', 'Error deleting faculty record: ' . $ex->getMessage());
-              break;
-            }
-
-            $attempt++;
-            sleep(3);
-          }
-        }
-
-        if ($attempt >= $maxRetries) {
-          setToast('Failed to delete the faculty record after multiple attempts.', 'danger', 7000);
+          $attempt++;
+          sleep(3);
         }
       }
+
+      if ($attempt >= $maxRetries) {
+        setToast('Failed to delete the faculty record after multiple attempts.', 'danger', 7000);
+      }
     }
-    else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
-  }
+  } else setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
+}
 
-  $fetchedRecords = [];
-  $activeRecordRole = null;
-  $pageHeading = 'User Records';
-  $pageSubheading = 'Choose a record type to inspect account data.';
+$fetchedRecords = [];
+$activeRecordRole = null;
+$pageHeading = 'User Records';
+$pageSubheading = 'Choose a record type to inspect account data.';
 
-  if (checkForEquality($viewParameter, 'viewStudents', 'strict')) {
-    $fetchedRecords = ciFetchStudentRecords($db1);
-    $activeRecordRole = 'student';
-    $pageHeading = 'Student Records';
-    $pageSubheading = 'View, edit, or delete registered student accounts.';
-  }
-  elseif (checkForEquality($viewParameter, 'viewFaculties', 'strict')) {
-    $fetchedRecords = ciFetchFacultyRecords($db1);
-    $activeRecordRole = 'faculty';
-    $pageHeading = 'Faculty Records';
-    $pageSubheading = 'View, edit, or delete registered faculty accounts.';
-  }
-  elseif (checkForEquality($viewParameter, 'viewAdmins', 'strict')) {
-    $fetchedRecords = ciFetchAdminRecords($db1);
-    $activeRecordRole = 'admin';
-    $pageHeading = 'Admin Records';
-    $pageSubheading = 'View registered administrator accounts.';
-  }
+if (checkForEquality($viewParameter, 'viewStudents', 'strict')) {
+  $fetchedRecords = ciFetchStudentRecords($db1);
+  $activeRecordRole = 'student';
+  $pageHeading = 'Student Records';
+  $pageSubheading = 'View, edit, or delete registered student accounts.';
+} elseif (checkForEquality($viewParameter, 'viewFaculties', 'strict')) {
+  $fetchedRecords = ciFetchFacultyRecords($db1);
+  $activeRecordRole = 'faculty';
+  $pageHeading = 'Faculty Records';
+  $pageSubheading = 'View, edit, or delete registered faculty accounts.';
+} elseif (checkForEquality($viewParameter, 'viewAdmins', 'strict')) {
+  $fetchedRecords = ciFetchAdminRecords($db1);
+  $activeRecordRole = 'admin';
+  $pageHeading = 'Admin Records';
+  $pageSubheading = 'View registered administrator accounts.';
+}
 
-  $batchListConfig = retrieveActiveBatchlist($db2);
-  $activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
-  if (!is_array($activeBatchList)) {
-    $activeBatchList = [];
-  }
+$batchListConfig = retrieveActiveBatchlist($db2);
+$activeBatchList = json_decode((string) ($batchListConfig['value'] ?? '[]'), true);
+if (!is_array($activeBatchList)) {
+  $activeBatchList = [];
+}
 
-  $csrfTokenValue = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
+$csrfTokenValue = htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8');
 ?>
 
 <?php // Headers
-  $page_title = "View Users List | careerinstitute.co.in";
+$page_title = "View Users List | careerinstitute.co.in";
 
-  require_once '../components/header.php';
+require_once '../components/header.php';
 
-  $breadcrumb_url_1 = '../dashboard/';
-  $breadcrumb_title_1 = 'Dashboard';
+$breadcrumb_url_1 = '../dashboard/';
+$breadcrumb_title_1 = 'Dashboard';
 
-  $breadcrumb_url_active = './';
-  $breadcrumb_title_active = 'View Users List';
+$breadcrumb_url_active = './';
+$breadcrumb_title_active = 'View Users List';
 
-  require_once '../components/breadcrumb.php';
+require_once '../components/breadcrumb.php';
 ?>
 
 <link rel="stylesheet" type="text/css" href="./userManager.css">
@@ -750,14 +737,14 @@
         </div>
 
         <form method="POST"
-              action="./"
-              class="mb-8 px-lg-10 <?php echo ($viewParameter) ? 'd-none' : 'd-block'; ?>">
+          action="./"
+          class="mb-8 px-lg-10 <?php echo ($viewParameter) ? 'd-none' : 'd-block'; ?>">
           <div class="d-flex row justify-content-center align-items-center mb-10">
             <div class="col form-group mb-7">
               <label class="form-label fw-semibold">Select User Role</label>
               <select class="form-select form-select-lg"
-                      name="user_role"
-                      required>
+                name="user_role"
+                required>
                 <option value="" selected disabled>Choose User Role</option>
                 <option value="student">Students</option>
                 <option value="faculty">Faculty</option>
@@ -766,8 +753,8 @@
             </div>
             <div class="col">
               <button class="btn btn-primary btn-sm rounded-pill"
-                      type="submit"
-                      name="viewUserBtn">View User List</button>
+                type="submit"
+                name="viewUserBtn">View User List</button>
             </div>
           </div>
         </form>
@@ -777,14 +764,14 @@
             <div class="mb-4 d-flex align-items-center gap-3 flex-wrap">
               <div class="position-relative grow" style="max-width:420px;">
                 <span class="material-symbols-outlined position-absolute text-body-tertiary"
-                      style="top:50%;right:.75rem;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">
+                  style="top:50%;right:.75rem;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">
                   search
                 </span>
                 <input type="search"
-                      id="recordSearchInput"
-                      class="form-control ps-5"
-                      placeholder="Search by name, email, or user code..."
-                      autocomplete="off" />
+                  id="recordSearchInput"
+                  class="form-control ps-5"
+                  placeholder="Search by name, email, or user code..."
+                  autocomplete="off" />
               </div>
               <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 fs-sm" id="recordCountBadge">
                 <?php echo count($fetchedRecords); ?> Records
@@ -819,22 +806,22 @@
                 <tbody id="recordTableBody">
                   <?php foreach ($fetchedRecords as $record): ?>
                     <?php
-                      $displayName = $activeRecordRole === 'student'
-                        ? ($record['student_name'] ?? '')
-                        : ($activeRecordRole === 'faculty' ? ($record['faculty_name'] ?? '') : ($record['admin_name'] ?? ''));
-                      $displayEmail = $activeRecordRole === 'student'
-                        ? ($record['student_email'] ?? '')
-                        : ($activeRecordRole === 'faculty' ? ($record['faculty_email'] ?? '') : ($record['admin_email'] ?? ''));
-                      $displayUsercode = $activeRecordRole === 'student'
-                        ? ($record['student_usercode'] ?? '')
-                        : ($activeRecordRole === 'faculty' ? ($record['faculty_usercode'] ?? '') : ($record['admin_usercode'] ?? ''));
-                      $searchName = strtolower(ciEscape($displayName));
-                      $searchEmail = strtolower(ciEscape($displayEmail));
-                      $searchUsercode = strtolower(ciEscape($displayUsercode));
+                    $displayName = $activeRecordRole === 'student'
+                      ? ($record['student_name'] ?? '')
+                      : ($activeRecordRole === 'faculty' ? ($record['faculty_name'] ?? '') : ($record['admin_name'] ?? ''));
+                    $displayEmail = $activeRecordRole === 'student'
+                      ? ($record['student_email'] ?? '')
+                      : ($activeRecordRole === 'faculty' ? ($record['faculty_email'] ?? '') : ($record['admin_email'] ?? ''));
+                    $displayUsercode = $activeRecordRole === 'student'
+                      ? ($record['student_usercode'] ?? '')
+                      : ($activeRecordRole === 'faculty' ? ($record['faculty_usercode'] ?? '') : ($record['admin_usercode'] ?? ''));
+                    $searchName = strtolower(ciEscape($displayName));
+                    $searchEmail = strtolower(ciEscape($displayEmail));
+                    $searchUsercode = strtolower(ciEscape($displayUsercode));
                     ?>
                     <tr data-search-name="<?php echo $searchName; ?>"
-                        data-search-email="<?php echo $searchEmail; ?>"
-                        data-search-usercode="<?php echo $searchUsercode; ?>">
+                      data-search-email="<?php echo $searchEmail; ?>"
+                      data-search-usercode="<?php echo $searchUsercode; ?>">
                       <?php if ($activeRecordRole === 'student'): ?>
                         <td class="text-start">
                           <div class="fw-semibold"><?php echo ciEscape($displayName ?: 'Unnamed Student'); ?></div>
@@ -859,23 +846,23 @@
                         <td>
                           <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
                             <button type="button"
-                                    class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
-                                    data-record="<?php echo ciJsonForDataset($record); ?>"
-                                    data-role="student"
-                                    onclick="openViewRecordDialog(this)">
+                              class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
+                              data-record="<?php echo ciJsonForDataset($record); ?>"
+                              data-role="student"
+                              onclick="openViewRecordDialog(this)">
                               View
                             </button>
                             <button type="button"
-                                    class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1"
-                                    data-record="<?php echo ciJsonForDataset($record); ?>"
-                                    onclick="openEditStudentDialog(this)">
+                              class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1"
+                              data-record="<?php echo ciJsonForDataset($record); ?>"
+                              onclick="openEditStudentDialog(this)">
                               Edit
                             </button>
                             <button type="button"
-                                    class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
-                                    data-id="<?php echo (int) ($record['student_id'] ?? 0); ?>"
-                                    data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
-                                    onclick="openDeleteStudentDialog(this)">
+                              class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
+                              data-id="<?php echo (int) ($record['student_id'] ?? 0); ?>"
+                              data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
+                              onclick="openDeleteStudentDialog(this)">
                               Delete
                             </button>
                           </div>
@@ -903,23 +890,23 @@
                         <td>
                           <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
                             <button type="button"
-                                    class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
-                                    data-record="<?php echo ciJsonForDataset($record); ?>"
-                                    data-role="faculty"
-                                    onclick="openViewRecordDialog(this)">
+                              class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
+                              data-record="<?php echo ciJsonForDataset($record); ?>"
+                              data-role="faculty"
+                              onclick="openViewRecordDialog(this)">
                               View
                             </button>
                             <button type="button"
-                                    class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1"
-                                    data-record="<?php echo ciJsonForDataset($record); ?>"
-                                    onclick="openEditFacultyDialog(this)">
+                              class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1"
+                              data-record="<?php echo ciJsonForDataset($record); ?>"
+                              onclick="openEditFacultyDialog(this)">
                               Edit
                             </button>
                             <button type="button"
-                                    class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
-                                    data-id="<?php echo (int) ($record['faculty_id'] ?? 0); ?>"
-                                    data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
-                                    onclick="openDeleteFacultyDialog(this)">
+                              class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
+                              data-id="<?php echo (int) ($record['faculty_id'] ?? 0); ?>"
+                              data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
+                              onclick="openDeleteFacultyDialog(this)">
                               Delete
                             </button>
                           </div>
@@ -937,10 +924,10 @@
                         </td>
                         <td>
                           <button type="button"
-                                  class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
-                                  data-record="<?php echo ciJsonForDataset($record); ?>"
-                                  data-role="admin"
-                                  onclick="openViewRecordDialog(this)">
+                            class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
+                            data-record="<?php echo ciJsonForDataset($record); ?>"
+                            data-role="admin"
+                            onclick="openViewRecordDialog(this)">
                             View
                           </button>
                         </td>
@@ -982,8 +969,8 @@
   </div>
   <div class="ci-dialog__footer">
     <button type="button"
-            class="btn btn-outline-secondary rounded-pill px-4"
-            onclick="closeDialog('viewRecordDialog')">Close</button>
+      class="btn btn-outline-secondary rounded-pill px-4"
+      onclick="closeDialog('viewRecordDialog')">Close</button>
   </div>
 </dialog>
 
@@ -1045,20 +1032,18 @@
 
       <div class="row g-3 mt-2">
         <?php
-          $studentToggles = [
-            'edit_student_account_activation_status' => 'Account Activated',
-            'edit_student_has_updated_username' => 'Username Updated',
-            'edit_student_has_updated_account_profile' => 'Profile Updated',
-            'edit_student_has_opted_email_communication' => 'Email Communication',
-          ];
+        $studentToggles = [
+          'edit_student_account_activation_status' => 'Account Activated',
+          'edit_student_has_opted_email_communication' => 'Email Communication',
+        ];
         ?>
         <?php foreach ($studentToggles as $toggleId => $toggleLabel): ?>
           <div class="col-12 col-md-6">
             <div class="border rounded-3 px-3 py-3 h-100">
               <input class="form-check-input me-2"
-                    type="checkbox"
-                    id="<?php echo $toggleId; ?>"
-                    name="<?php echo $toggleId; ?>">
+                type="checkbox"
+                id="<?php echo $toggleId; ?>"
+                name="<?php echo $toggleId; ?>">
               <label class="form-check-label fs-sm fw-semibold" for="<?php echo $toggleId; ?>"><?php echo $toggleLabel; ?></label>
             </div>
           </div>
@@ -1106,26 +1091,57 @@
 
       <div class="row g-3 mt-2">
         <?php
-          $facultyToggles = [
-            'edit_faculty_account_activation_status' => 'Account Activated',
-            'edit_faculty_has_used_account_activation' => 'Used Activation',
-            'edit_faculty_has_updated_username' => 'Username Updated',
-            'edit_faculty_has_updated_account_profile' => 'Profile Updated',
-            'edit_faculty_has_opted_email_communication' => 'Email Communication',
-          ];
+        $facultyToggles = [
+          'edit_faculty_account_activation_status' => 'Account Activated',
+          'edit_faculty_has_opted_email_communication' => 'Email Communication',
+        ];
         ?>
         <?php foreach ($facultyToggles as $toggleId => $toggleLabel): ?>
           <div class="col-12 col-md-6">
             <div class="border rounded-3 px-3 py-3 h-100">
               <input class="form-check-input me-2"
-                    type="checkbox"
-                    id="<?php echo $toggleId; ?>"
-                    name="<?php echo $toggleId; ?>">
+                type="checkbox"
+                id="<?php echo $toggleId; ?>"
+                name="<?php echo $toggleId; ?>">
               <label class="form-check-label fs-sm fw-semibold" for="<?php echo $toggleId; ?>"><?php echo $toggleLabel; ?></label>
             </div>
           </div>
         <?php endforeach; ?>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold fs-sm mb-2">Assigned Batches</label>
+          <?php if (!empty($activeBatchList)): ?>
+            <div class="border rounded-3 p-3 d-flex flex-column gap-2" style="max-height:200px;overflow-y:auto;">
+              <?php foreach ($activeBatchList as $batchCode): ?>
+                <div class="form-check">
+                  <input class="form-check-input um-faculty-batch-check"
+                    type="checkbox"
+                    name="edit_faculty_batches[]"
+                    id="um_faculty_batch_<?php echo ciEscape($batchCode); ?>"
+                    value="<?php echo ciEscape($batchCode); ?>" />
+                  <label class="form-check-label fs-sm"
+                    for="um_faculty_batch_<?php echo ciEscape($batchCode); ?>">
+                    <?php echo ciEscape(prettyPrintClassCode($batchCode)); ?>
+                  </label>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none"
+                onclick="document.querySelectorAll('.um-faculty-batch-check').forEach(c => c.checked = true)">Select All</button>
+              <span class="text-body-tertiary fs-xs">·</span>
+              <button type="button" class="btn btn-link btn-sm p-0 fs-xs text-decoration-none"
+                onclick="document.querySelectorAll('.um-faculty-batch-check').forEach(c => c.checked = false)">Deselect All</button>
+            </div>
+          <?php else: ?>
+            <div class="text-body-secondary fs-sm border rounded-3 p-3">
+              <span class="material-symbols-outlined align-middle" style="font-size:1rem;">info</span>
+              No active batches available.
+            </div>
+          <?php endif; ?>
+        </div>
       </div>
+    </div>
     </div>
     <div class="ci-dialog__footer">
       <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="closeDialog('editFacultyDialog')">Cancel</button>
@@ -1181,6 +1197,8 @@
   </form>
 </dialog>
 
+<script type="text/javascript" src="../library/js/utils.js"></script>
+
 <script type="text/javascript">
   const recordLabels = {
     student_id: 'Student ID',
@@ -1212,7 +1230,7 @@
     faculty_name: 'Faculty Name',
     faculty_bio: 'Bio',
     faculty_account_activation_status: 'Account Activated',
-    faculty_has_used_account_activation: 'Used Activation',
+    faculty_batch_list: 'Assigned Batches',
     faculty_has_updated_username: 'Username Updated',
     faculty_has_updated_account_profile: 'Profile Updated',
     faculty_has_opted_email_communication: 'Email Communication',
@@ -1236,11 +1254,31 @@
     'student_has_updated_account_profile',
     'student_has_opted_email_communication',
     'faculty_account_activation_status',
-    'faculty_has_used_account_activation',
     'faculty_has_updated_username',
     'faculty_has_updated_account_profile',
     'faculty_has_opted_email_communication'
   ]);
+
+  function htmlspecialchars_decode(string, quote_style = 'ENT_COMPAT') {
+    if (!string) return '';
+
+    let str = string;
+
+    str = str.replace(/&amp;/g, '&'); // decode first layer
+
+    str = str.replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+
+    if (quote_style !== 'ENT_NOQUOTES') {
+      str = str.replace(/&quot;/g, '"');
+    }
+
+    if (quote_style === 'ENT_QUOTES') {
+      str = str.replace(/&#0*39;/g, "'");
+    }
+
+    return str;
+  }
 
   function parseRecord(btn) {
     return JSON.parse(btn.dataset.record || '{}');
@@ -1260,7 +1298,7 @@
     const select = document.getElementById(selectId);
     if (!select || !value) return;
 
-    const hasOption = Array.from(select.options).some(function (option) {
+    const hasOption = Array.from(select.options).some(function(option) {
       return option.value === String(value);
     });
 
@@ -1272,10 +1310,45 @@
     }
   }
 
+  function prettyPrintClassCode(code) {
+    const parts = String(code || '').trim().split('-');
+
+    if (parts.length < 2) return String(code || '');
+
+    const cls = parts[0];
+    const board = parts[1];
+    const stream = parts[2];
+
+    if (!stream || stream.toUpperCase() === 'NULL') {
+      return `${cls} ${board}`;
+    }
+
+    return `${cls} ${board} (${stream})`;
+  }
+
   function formatRecordValue(key, value) {
     if (value === null || value === undefined || value === '') return '-';
+
     if (booleanRecordKeys.has(key) && String(value) === '1') return 'Yes';
     if (booleanRecordKeys.has(key) && String(value) === '0') return 'No';
+
+    if (key === 'student_bio' || key === 'faculty_bio' || key === 'admin_bio') {
+      return htmlspecialchars_decode(value, 'ENT_QUOTES');
+    }
+
+    if (key === 'faculty_batch_list') {
+      try {
+        const batches = JSON.parse(value || '[]');
+        if (!Array.isArray(batches) || batches.length === 0) return '-';
+
+        return batches
+          .map(b => prettyPrintClassCode(b))
+          .join(', ');
+      } catch {
+        return value;
+      }
+    }
+
     return String(value);
   }
 
@@ -1292,7 +1365,7 @@
     subtitle.textContent = email;
     grid.innerHTML = '';
 
-    Object.keys(record).forEach(function (key) {
+    Object.keys(record).forEach(function(key) {
       const field = document.createElement('div');
       field.className = 'ci-record-field';
 
@@ -1322,11 +1395,8 @@
     ensureSelectOption('edit_student_batch_details', record.student_batch_details);
     setValue('edit_student_batch_details', record.student_batch_details);
     setValue('edit_student_school_name', record.student_school_name);
-    setValue('edit_student_bio', record.student_bio);
-    setValue('edit_student_malpractice_counter', record.student_malpractice_counter || 0);
+    setValue('edit_student_bio', htmlspecialchars_decode(record.student_bio, 'ENT_QUOTES'));
     setChecked('edit_student_account_activation_status', record.student_account_activation_status);
-    setChecked('edit_student_has_updated_username', record.student_has_updated_username);
-    setChecked('edit_student_has_updated_account_profile', record.student_has_updated_account_profile);
     setChecked('edit_student_has_opted_email_communication', record.student_has_opted_email_communication);
     openDialog('editStudentDialog');
   }
@@ -1337,12 +1407,15 @@
     setValue('edit_faculty_name', record.faculty_name);
     setValue('edit_faculty_email', record.faculty_email);
     setValue('edit_faculty_username', record.faculty_username);
-    setValue('edit_faculty_bio', record.faculty_bio);
+    setValue('edit_faculty_bio', htmlspecialchars_decode(record.faculty_bio, 'ENT_QUOTES'));
     setChecked('edit_faculty_account_activation_status', record.faculty_account_activation_status);
-    setChecked('edit_faculty_has_used_account_activation', record.faculty_has_used_account_activation);
-    setChecked('edit_faculty_has_updated_username', record.faculty_has_updated_username);
-    setChecked('edit_faculty_has_updated_account_profile', record.faculty_has_updated_account_profile);
     setChecked('edit_faculty_has_opted_email_communication', record.faculty_has_opted_email_communication);
+
+    const selectedBatches = JSON.parse(record.faculty_batch_list || '[]');
+    document.querySelectorAll('.um-faculty-batch-check').forEach(chk => {
+      chk.checked = selectedBatches.includes(chk.value);
+    });
+
     openDialog('editFacultyDialog');
   }
 
@@ -1359,12 +1432,12 @@
   }
 
   initLiveSearch({
-    inputId:      'recordSearchInput',
-    tableBodyId:  'recordTableBody',
-    noResultsId:  'noRecordResults',
-    badgeId:      'recordCountBadge',
-    total:        <?php echo count($fetchedRecords); ?>,
-    searchAttrs:  ['searchName', 'searchEmail', 'searchUsercode'],
+    inputId: 'recordSearchInput',
+    tableBodyId: 'recordTableBody',
+    noResultsId: 'noRecordResults',
+    badgeId: 'recordCountBadge',
+    total: <?php echo count($fetchedRecords); ?>,
+    searchAttrs: ['searchName', 'searchEmail', 'searchUsercode'],
   });
 </script>
 

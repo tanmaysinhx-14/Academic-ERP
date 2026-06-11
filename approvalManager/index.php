@@ -359,6 +359,8 @@
   </form>
 </dialog>
 
+<script type="text/javascript" src="../library/js/utils.js"></script>
+
 <script type="text/javascript">
   function openDeleteApprovalDialog(btn) {
     const { email, name } = btn.dataset;
