@@ -14,9 +14,9 @@
   require_once '../components/header.php'; 
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container d-flex flex-column">
-    <div class="row align-items-center justify-content-center gx-0 min-vh-100">
+    <div class="row gx-0 align-items-center justify-content-center">
       <div class="d-flex flex-column align-items-center justify-content-center col-md-8 px-8 px-md-8 py-8 py-md-8">
         <svg height="150" width="150" fill="#000000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
           <g id="SVGRepo_bgCarrier" stroke-width="0"></g>

@@ -254,10 +254,10 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container-xxl d-flex flex-column">
 
-    <div class="row g-4 align-items-start justify-content-center min-vh-100">
+    <div class="row g-4 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
         <div class="row mb-5">
           <div class="col-12">
@@ -315,8 +315,8 @@
                       <tbody id="notifTableBody">
                         <?php foreach ($notificationRecords as $record):
                           $notifId         = (int) ($record['id'] ?? 0);
-                          $displayHeading  = htmlspecialchars($record['notification_heading']          ?? '—', ENT_QUOTES, 'UTF-8');
-                          $displaySub      = htmlspecialchars($record['notification_subheading']       ?? '—', ENT_QUOTES, 'UTF-8');
+                          $displayHeading  = escapeOutput(decodeOutput($record['notification_heading']    ?? '—'));
+                          $displaySub      = escapeOutput(decodeOutput($record['notification_subheading'] ?? '—'));
                           $displayExpiry   = htmlspecialchars($record['notification_expire_timestamp'] ?? '—', ENT_QUOTES, 'UTF-8');
                           $displayRole     = htmlspecialchars($record['notification_user_role']        ?? '—', ENT_QUOTES, 'UTF-8');
                           $rawBatches      = json_decode($record['notification_batch_value'] ?? '[]', true) ?: [];
@@ -327,8 +327,8 @@
                         <tr data-search-heading="<?php echo strtolower($displayHeading); ?>"
                             data-search-sub="<?php echo strtolower($displaySub); ?>">
                           <td class="ps-4 py-3">
-                            <div class="fw-semibold lh-sm"><?php echo htmlspecialchars_decode($displayHeading, ENT_QUOTES); ?></div>
-                            <div class="text-body-secondary fs-xs mt-1"><?php echo htmlspecialchars_decode($displaySub, ENT_QUOTES); ?></div>
+                            <div class="fw-semibold lh-sm"><?php echo $displayHeading; ?></div>
+                            <div class="text-body-secondary fs-xs mt-1"><?php echo $displaySub; ?></div>
                           </td>
                           <td class="py-3">
                             <?php if ($displayRole === 'faculty'): ?>

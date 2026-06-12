@@ -115,9 +115,9 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container d-flex flex-column">
-    <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+    <div class="row gx-0 align-items-center justify-content-center">
       <div class="col-12 px-8 py-8">
         <h1 class="display-4 fw-bold">
           Are you sure you want to deactivate your account?

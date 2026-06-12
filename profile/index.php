@@ -13,13 +13,27 @@
   $isProfileEditable = getSecondsPassed($userRecord['student_profile_updating_timestamp']) >= 86400;
   $isBatchEditable = isEligibleForBatchChange($userRecord['student_batch_updating_timestamp']);
 
+  function canSubmitStudentProfileForm(PDO $db, string $userCode): bool {
+    $rateLimit = getUserTimestampRateLimitStatus($db, 'student', $userCode, 'student_profile_rate_limit_timestamp', 60);
+
+    if (($rateLimit['limited'] ?? false) === true) {
+      setToast('Please wait ' . max(1, (int) ($rateLimit['retry_after'] ?? 0)) . ' seconds before submitting another profile change.', 'warning', 7000);
+      return false;
+    }
+
+    touchUserRateLimitTimestamp($db, 'student', $userCode, 'student_profile_rate_limit_timestamp');
+    return true;
+  }
+
   if (isset($_POST['saveUpdatedUsernameBtn'])) {
-    $updatedUsername = escapeOutput($_POST['updatedUsername']) ?? null;
-    $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
+    $updatedUsername = normalizeInput($_POST['updatedUsername'] ?? null);
+    $csrfToken       = normalizeInput($_POST['csrf_token'] ?? null);
     if(validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
-      if (validateUsername($updatedUsername)) { // Username Validation Successful
+      if (!canSubmitStudentProfileForm($db1, $_SESSION['usercode'])) {
+      }
+      elseif (validateUsername($updatedUsername)) { // Username Validation Successful
         $usernameCheckStatus = checkUserRecord($db1, 'student_details', ['student_username' => $updatedUsername]);
 
         if(checkForEquality($usernameCheckStatus, true, 'strict')) { // Username Already Exists
@@ -89,18 +103,20 @@
   }
 
   elseif (isset($_POST['saveAdditionalDetails'])) {
-    $updatedFatherName   = escapeOutput($_POST['fatherName']);
-    $updatedGuardianName = escapeOutput($_POST['guardianName']);
-    $batchDetails        = escapeOutput($_POST['batchDetails']);
-    $updatedSchoolName   = escapeOutput($_POST['schoolName']);
-    $updatedStudentBio   = escapeOutput($_POST['studentBio']);
+    $updatedFatherName   = normalizeInput($_POST['fatherName'] ?? null);
+    $updatedGuardianName = normalizeInput($_POST['guardianName'] ?? null);
+    $batchDetails        = normalizeInput($_POST['batchDetails'] ?? null);
+    $updatedSchoolName   = normalizeInput($_POST['schoolName'] ?? null);
+    $updatedStudentBio   = normalizeInput($_POST['studentBio'] ?? null);
 
-    $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
+    $csrfToken           = normalizeInput($_POST['csrf_token'] ?? null);
     
     if(validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
-      if($isProfileEditable) {
+      if (!canSubmitStudentProfileForm($db1, $_SESSION['usercode'])) {
+      }
+      elseif($isProfileEditable) {
         if (validateRequiredFormFields([$updatedFatherName, $updatedGuardianName, $batchDetails, $updatedSchoolName])) {
           $currentTimestamp = getCurrentTimestamp();
 
@@ -208,10 +224,14 @@
   }
 
   elseif (isset($_POST['saveConfigurations'])) {
-    $csrfToken           = escapeOutput($_POST['csrf_token']) ?? null;
+    $csrfToken           = normalizeInput($_POST['csrf_token'] ?? null);
 
     if(validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
+
+      if (!canSubmitStudentProfileForm($db1, $_SESSION['usercode'])) {
+        return;
+      }
 
       $STMT_updateStudentEmailPreference = 'UPDATE student_configurations
                                             SET student_has_opted_email_communication = :student_has_opted_email_communication
@@ -276,7 +296,7 @@
 
 <!-- USERNAME ENTERING FORM -->
 <?php if(checkForEquality($userRecord['student_has_updated_username'], 0, 'strict')): ?>
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <!-- FOR SMALL SCREENS -->  
     <header class="bg-dark pt-9 pb-11 d-md-none">
       <div class="container-lg px-7">
@@ -363,7 +383,7 @@
 
 <!-- FIRST TIME PROFILE UPDATING -->
 <?php elseif(checkForEquality($userRecord['student_has_updated_username'], 1, 'strict')): ?>
-  <section class="section-border border-primary min-vh-100">  
+  <section class="my-auto">  
     <!-- FOR SMALL SCREENS -->  
     <header class="bg-dark pt-9 pb-11 d-md-none">
       <div class="container-lg px-7">
@@ -665,7 +685,7 @@
                                 id="studentBio" 
                                 type="text" 
                                 name="studentBio"
-                                value="<?php echo isset($userRecord['student_bio']) ? htmlspecialchars_decode($userRecord['student_bio']) : ''; ?>"
+                                value="<?php echo isset($userRecord['student_bio']) ? escapeOutput(decodeOutput($userRecord['student_bio'])) : ''; ?>"
                                 placeholder="Enter something about you ..."
                                 <?php echo $isProfileEditable ? '' : 'disabled'; ?> />
                         </div>

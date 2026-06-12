@@ -78,7 +78,7 @@
 <?php if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): ?>
   <!-- Student Dashboard Here -->
   <?php if(checkForEquality((int)$userRecord['student_has_updated_account_profile'], 0, 'strict')): ?>
-    <section class="section-border border-primary min-vh-100">
+    <section class="my-auto">
       <main class="pt-8 pt-md-11 pb-10 pb-md-15 bg-primary">
         <div class="shape shape-blur-3 text-white">
           <svg viewBox="0 0 1738 487" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -110,7 +110,7 @@
     </section>
 
   <?php elseif(checkForEquality((int)$userRecord['student_has_updated_account_profile'], 1, 'strict')): ?>
-    <section class="section-border border-primary min-vh-100">
+    <section class="my-auto --100">
       <main class="pt-8 pt-md-11 pb-10 pb-md-15 bg-primary">
         <div class="shape shape-blur-3 text-white">
           <svg viewBox="0 0 1738 487" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -308,7 +308,7 @@
 
 <?php elseif(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'faculty', 'strict')): ?>
   <!-- Faculty Dashboard Here -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto min-vh-100">
     <main class="pt-8 pt-md-11 pb-10 pb-md-15 bg-primary">
       <div class="shape shape-blur-3 text-white">
         <svg viewBox="0 0 1738 487" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -455,7 +455,7 @@
 
 <?php elseif(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
   <!-- Admin Dashboard Here -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto min-vh-100">
     <main class="pt-8 pt-md-11 pb-10 pb-md-15 bg-primary">
       <div class="shape shape-blur-3 text-white">
         <svg viewBox="0 0 1738 487" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -724,8 +724,8 @@
       <div class="d-flex flex-column gap-3">
 
         <?php foreach ($dashboardNotifications as $notif): 
-          $nHeading = htmlspecialchars_decode($notif['notification_heading'] ?? '');
-          $nSub     = htmlspecialchars_decode($notif['notification_subheading'] ?? '');
+          $nHeading = escapeOutput(decodeOutput($notif['notification_heading'] ?? ''));
+          $nSub     = escapeOutput(decodeOutput($notif['notification_subheading'] ?? ''));
           $nExpiry  = $notif['notification_expire_timestamp'] ?? '';
           $expiresIn = $nExpiry ? ceil((strtotime($nExpiry) - time()) / 86400) : null;
         ?>

@@ -585,9 +585,9 @@
 
 <?php if(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_REQUEST_PENDING', 'strict')): ?>
   <?php if(checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In?>
-    <section class="section-border border-primary">
+    <section class="my-auto">
       <div class="container d-flex flex-column">
-        <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+        <div class="row gx-0 align-items-start justify-content-center">
           <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
             <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
@@ -616,9 +616,9 @@
     </section>
 
   <?php else: // User Logged Out ?>
-    <section class="section-border border-primary">
+    <section class="my-auto">
       <div class="container d-flex flex-column">
-        <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+        <div class="row gx-0 align-items-center justify-content-center">
           <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
             <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
@@ -679,9 +679,9 @@
   <?php endif; ?>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_VERIFICATION_PENDING', 'strict')): ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
           <h1 class="mb-0 fw-bold text-center">Verify OTP</h1>
           <p class="lead mb-7 text-center text-body-secondary">
@@ -722,9 +722,9 @@
   </section>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'CHANGE_PASSWORD_PENDING', 'strict')): ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
           <h1 class="mb-0 fw-bold text-center">Change Password</h1>
           <p class="lead mb-7 text-center text-body-secondary">

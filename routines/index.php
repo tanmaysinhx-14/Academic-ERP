@@ -85,9 +85,9 @@
 ?>
 
 <?php if(checkForEquality($currentUserRole, 'admin', 'strict')): ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 px-0 px-lg-8 py-8">
           <p class="mb-4 display-4 fw-bold">
             Routine Viewer
@@ -156,9 +156,9 @@
   </section>
 
 <?php elseif(checkForEquality($currentUserRole, 'student', 'strict')): ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-start justify-content-center">
         <div class="col-12 px-0 px-lg-8 py-8">
           <p class="my-10 mb-4 display-4 fw-bold">
             <?php if (checkForEquality($currentUserRole, 'student', 'strict')): ?>

@@ -15,6 +15,16 @@ function ciEscape(mixed $value): string
   return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
+function ciDecode(mixed $value): string
+{
+  return decodeOutput((string) ($value ?? ''));
+}
+
+function ciDisplay(mixed $value): string
+{
+  return ciEscape(ciDecode($value));
+}
+
 function ciNullableString(mixed $value): ?string
 {
   $value = trim((string) ($value ?? ''));
@@ -722,9 +732,9 @@ require_once '../components/breadcrumb.php';
 
 <link rel="stylesheet" type="text/css" href="./userManager.css">
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container-xxl d-flex flex-column">
-    <div class="row gx-0 align-items-start justify-content-center min-vh-100">
+    <div class="row gx-0 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-6">
           <div>
@@ -815,20 +825,20 @@ require_once '../components/breadcrumb.php';
                     $displayUsercode = $activeRecordRole === 'student'
                       ? ($record['student_usercode'] ?? '')
                       : ($activeRecordRole === 'faculty' ? ($record['faculty_usercode'] ?? '') : ($record['admin_usercode'] ?? ''));
-                    $searchName = strtolower(ciEscape($displayName));
-                    $searchEmail = strtolower(ciEscape($displayEmail));
-                    $searchUsercode = strtolower(ciEscape($displayUsercode));
+                    $searchName = strtolower(ciDisplay($displayName));
+                    $searchEmail = strtolower(ciDisplay($displayEmail));
+                    $searchUsercode = strtolower(ciDisplay($displayUsercode));
                     ?>
                     <tr data-search-name="<?php echo $searchName; ?>"
                       data-search-email="<?php echo $searchEmail; ?>"
                       data-search-usercode="<?php echo $searchUsercode; ?>">
                       <?php if ($activeRecordRole === 'student'): ?>
                         <td class="text-start">
-                          <div class="fw-semibold"><?php echo ciEscape($displayName ?: 'Unnamed Student'); ?></div>
-                          <div class="text-body-secondary fs-sm"><?php echo ciEscape($displayEmail); ?></div>
+                          <div class="fw-semibold"><?php echo ciDisplay($displayName ?: 'Unnamed Student'); ?></div>
+                          <div class="text-body-secondary fs-sm"><?php echo ciDisplay($displayEmail); ?></div>
                         </td>
-                        <td><code class="fs-sm"><?php echo ciEscape($displayUsercode); ?></code></td>
-                        <td><?php echo ciEscape(prettyPrintClassCode($record['student_batch_details'] ?? '')); ?></td>
+                        <td><code class="fs-sm"><?php echo ciDisplay($displayUsercode); ?></code></td>
+                        <td><?php echo ciDisplay(prettyPrintClassCode(ciDecode($record['student_batch_details'] ?? ''))); ?></td>
                         <td>
                           <?php if ((int) ($record['student_account_activation_status'] ?? 0) === 1): ?>
                             <span class="badge bg-success-subtle text-success rounded-pill px-3">Active</span>
@@ -861,7 +871,7 @@ require_once '../components/breadcrumb.php';
                             <button type="button"
                               class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
                               data-id="<?php echo (int) ($record['student_id'] ?? 0); ?>"
-                              data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
+                              data-name="<?php echo ciDisplay($displayName ?: $displayUsercode); ?>"
                               onclick="openDeleteStudentDialog(this)">
                               Delete
                             </button>
@@ -869,10 +879,10 @@ require_once '../components/breadcrumb.php';
                         </td>
                       <?php elseif ($activeRecordRole === 'faculty'): ?>
                         <td class="text-start">
-                          <div class="fw-semibold"><?php echo ciEscape($displayName ?: 'Unnamed Faculty'); ?></div>
-                          <div class="text-body-secondary fs-sm"><?php echo ciEscape($displayEmail); ?></div>
+                          <div class="fw-semibold"><?php echo ciDisplay($displayName ?: 'Unnamed Faculty'); ?></div>
+                          <div class="text-body-secondary fs-sm"><?php echo ciDisplay($displayEmail); ?></div>
                         </td>
-                        <td><code class="fs-sm"><?php echo ciEscape($displayUsercode); ?></code></td>
+                        <td><code class="fs-sm"><?php echo ciDisplay($displayUsercode); ?></code></td>
                         <td>
                           <?php if ((int) ($record['faculty_account_activation_status'] ?? 0) === 1): ?>
                             <span class="badge bg-success-subtle text-success rounded-pill px-3">Active</span>
@@ -905,7 +915,7 @@ require_once '../components/breadcrumb.php';
                             <button type="button"
                               class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
                               data-id="<?php echo (int) ($record['faculty_id'] ?? 0); ?>"
-                              data-name="<?php echo ciEscape($displayName ?: $displayUsercode); ?>"
+                              data-name="<?php echo ciDisplay($displayName ?: $displayUsercode); ?>"
                               onclick="openDeleteFacultyDialog(this)">
                               Delete
                             </button>
@@ -913,10 +923,10 @@ require_once '../components/breadcrumb.php';
                         </td>
                       <?php else: ?>
                         <td class="text-start">
-                          <div class="fw-semibold"><?php echo ciEscape($displayName ?: 'Unnamed Admin'); ?></div>
-                          <div class="text-body-secondary fs-sm"><?php echo ciEscape($displayEmail); ?></div>
+                          <div class="fw-semibold"><?php echo ciDisplay($displayName ?: 'Unnamed Admin'); ?></div>
+                          <div class="text-body-secondary fs-sm"><?php echo ciDisplay($displayEmail); ?></div>
                         </td>
-                        <td><code class="fs-sm"><?php echo ciEscape($displayUsercode); ?></code></td>
+                        <td><code class="fs-sm"><?php echo ciDisplay($displayUsercode); ?></code></td>
                         <td>
                           <?php echo !empty($record['admin_current_active_session'])
                             ? '<span class="badge bg-success-subtle text-success rounded-pill px-3">Signed in</span>'

@@ -234,9 +234,9 @@
 <link rel="stylesheet" href="./attendance-styler.css" />
 
 <?php if (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container-xxl d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 px-8 py-8">
 
           <?php if (checkForEquality($selectedBatch, null, 'strict')): ?>
@@ -267,7 +267,7 @@
 
           <?php else: ?>
 
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-5">
+            <div class="d-flex align-items-center justify-content-center flex-wrap gap-3 mb-5">
               <div>
                 <h2 class="fw-bold mb-1">
                   Attendance &mdash;
@@ -306,7 +306,7 @@
               <!-- ATTENDANCE MANAGE MODE -->
               <div id="managePane">
                 <div class="mx-auto" style="max-width: 400px;">
-                  <div class="d-flex align-items-center justify-content-between mb-3">
+                  <div class="d-flex align-items-center justify-content-center mb-3">
                     <button type="button" class="btn btn-sm btn-secondary px-3" id="prevMonth">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
@@ -344,7 +344,7 @@
                       <input type="hidden" name="attendance_id"    id="dialogRecordId">
                       <input type="hidden" name="csrf_token"       value="<?= $csrfToken; ?>">
 
-                      <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="d-flex align-items-center justify-content-center mb-2">
                         <label class="fw-semibold fs-sm">Students Present</label>
                         <div class="d-flex gap-2">
                           <button type="button" class="btn btn-xs btn-success rounded-pill px-2 py-0" onclick="toggleAll(true)">All Present</button>
@@ -385,7 +385,7 @@
 
               <!-- ATTENDANCE VIEW MODE -->
               <div id="viewPane" class="w-100 d-none d-flex flex-column align-items-center">
-                <div class="d-flex align-items-center justify-content-between mb-4" style="width: fit-content; min-width: 300px;">
+                <div class="d-flex align-items-center justify-content-center mb-4" style="width: fit-content; min-width: 300px;">
                   <button type="button" class="col-auto btn btn-sm btn-secondary px-3" id="prevViewMonth">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
@@ -647,9 +647,9 @@
 
 <?php elseif (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): ?>
 
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container-xxl d-flex flex-column">
-      <div class="row gx-0 justify-content-center min-vh-100">
+      <div class="row gx-0 justify-content-center">
 
         <!-- CALENDAR -->
         <div class="col-12 col-xl-5 px-8 py-8">
@@ -678,7 +678,7 @@
 
         <!-- TABULAR SUMMARY -->
         <div class="col-12 col-xl-7 px-8 py-8 border-start">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+          <div class="d-flex align-items-center justify-content-center flex-wrap gap-3 mb-4">
             <h5 class="fw-bold mb-0">Academic Year Summary</h5>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-sm btn-secondary px-3" id="prevAcadYear">

@@ -1,3 +1,6 @@
+    <script src="../library/js/vendor.bundle.js"></script>
+    <script src="../library/js/theme.bundle.js"></script>
+
     <footer>
       <div class="row text-center bg-dark text-white py-5">
         <span class="col-12 px-5 text-center text-gray-300 ff-inter">
@@ -13,8 +16,5 @@
         </span>
       </div>
     </footer>
-  
-    <script src="../library/js/vendor.bundle.js"></script>
-    <script src="../library/js/theme.bundle.js"></script>
   </body>
 </html>

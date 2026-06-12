@@ -76,43 +76,50 @@
   }
 
   if (isset($_POST['registerStudentBtn'])) {
-    $enteredEmail             = escapeOutput($_POST['email']                      ?? null);
-    $enteredNewPassword       = escapeOutput($_POST['new_password']               ?? null);
-    $enteredName              = escapeOutput($_POST['student_name']               ?? null);
-    $enteredFatherName        = escapeOutput($_POST['father_name']                ?? null);
-    $enteredBatch             = escapeOutput($_POST['batchSelect']                ?? null);
-    $enteredConfirmPassword   = escapeOutput($_POST['confirm_password']           ?? null);
-    $optForEmailCommunication = escapeOutput($_POST['optForEmailCommunication']   ?? 0);
-    $csrfToken                = escapeOutput($_POST['csrf_token']                 ?? null);
-    $registrationIpAddress    = getRegistrationRequestIpAddress();
+    $enteredEmail             = normalizeInput($_POST['email'] ?? null);
+    $enteredNewPassword       = readPasswordInput($_POST['new_password'] ?? null);
+    $enteredName              = normalizeInput($_POST['student_name'] ?? null);
+    $enteredFatherName        = normalizeInput($_POST['father_name'] ?? null);
+    $enteredBatch             = normalizeInput($_POST['batchSelect'] ?? null);
+    $enteredConfirmPassword   = readPasswordInput($_POST['confirm_password'] ?? null);
+    $optForEmailCommunication = isset($_POST['optForEmailCommunication']) ? 1 : 0;
+    $csrfToken                = normalizeInput($_POST['csrf_token'] ?? null);
+    $registrationIpAddress    = (string) (getUserLoginEnvironment()['ip_address'] ?? 'Unknown');
+    $registrationRateLimitKey = 'accounts_student_registration';
+    $registrationRateLimitIdentity = buildRequestRateLimitIdentity($registrationRateLimitKey);
 
     if (validateCsrfToken($csrfToken)) {
       unsetCsrfToken();
 
       if (isset($_POST['agreeTermsAndConditions'])) {
-        if (validateEmail($enteredEmail)
+        $registrationRateLimitStatus = getDatabaseRateLimitStatus($db2, $registrationRateLimitKey, $registrationRateLimitIdentity, 5, 3600, 1800);
+
+        if (($registrationRateLimitStatus['limited'] ?? false) === true) {
+          $retryAfter        = max(1, (int) ($registrationRateLimitStatus['retry_after'] ?? 0));
+          $retryAfterMinutes = max(1, (int) ceil($retryAfter / 60));
+
+          setToast('Too many registration requests were submitted from this device or network. Please wait about ' . $retryAfterMinutes . ' minutes before trying again.', 'danger', 7000);
+
+          $emailValidationStatus = 'is-invalid';
+          $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
+                                      <span class="material-symbols-outlined me-1">info</span>
+                                      Too many recent registration requests from this device or network.
+                                    </span>';
+        }
+        else {
+          registerDatabaseRateLimitFailure($db2, $registrationRateLimitKey, $registrationRateLimitIdentity, 5, 3600, 1800);
+        }
+
+        if (($registrationRateLimitStatus['limited'] ?? false) !== true
+              &&
+            validateEmail($enteredEmail)
               &&
             validatePassword($enteredNewPassword)
               &&
             validatePassword($enteredConfirmPassword)
               &&
             checkForEquality($enteredNewPassword, $enteredConfirmPassword, 'strict')) {
-
-          $registrationRateLimitStatus = getApprovalRegistrationRateLimitStatus($db1, $registrationIpAddress);
-
-          if (($registrationRateLimitStatus['limited'] ?? false) === true) {
-            $retryAfter        = max(1, (int) ($registrationRateLimitStatus['retry_after'] ?? 0));
-            $retryAfterMinutes = max(1, (int) ceil($retryAfter / 60));
-
-            setToast('Too many registration requests were submitted from this network. Please wait about ' . $retryAfterMinutes . ' minutes before trying again.', 'danger', 7000);
-
-            $emailValidationStatus = 'is-invalid';
-            $emailHelpText         = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
-                                        <span class="material-symbols-outlined me-1">info</span>
-                                        Too many recent registration requests from this network.
-                                      </span>';
-          }
-          elseif (!checkUserRecord($db1, 'approval_users',  ['approval_email' => $enteredEmail])
+          if (!checkUserRecord($db1, 'approval_users',  ['approval_email' => $enteredEmail])
                 &&
                   !checkUserRecord($db1, 'student_details', ['student_email'   => $enteredEmail])) {
 
@@ -158,8 +165,8 @@
                 exit;
               }
 
-              $displayEmail        = htmlspecialchars($enteredEmail,    ENT_QUOTES, 'UTF-8');
-              $displayGeneratedCode = htmlspecialchars($generatedCode,  ENT_QUOTES, 'UTF-8');
+              $displayEmail        = escapeOutput($enteredEmail);
+              $displayGeneratedCode = escapeOutput($generatedCode);
 
               $mail = createConfiguredMailer();
               $mail->addAddress($enteredEmail);
@@ -403,9 +410,9 @@
   require_once '../components/header.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container d-flex flex-column">
-    <div class="row gx-0 align-items-between justify-content-center min-vh-100">
+    <div class="row gx-0 align-items-between justify-content-center">
       <div class="col-12 col-lg-9 px-0 px-lg-8 py-8">
 
         <p class="display-4 fw-bold text-center">Register</p>

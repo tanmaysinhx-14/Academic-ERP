@@ -252,7 +252,7 @@
 
 <?php if(checkForEquality($enquiryFormStatus, 'selectManagerTask', 'strict')): ?>
   <!-- MAIN MENU OF ENQUIRY MANAGER -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
       <div class="row justify-content-center align-items-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
@@ -273,7 +273,7 @@
   </section>
 
   <!-- ENQUIRY REQUEST FORM -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
@@ -784,7 +784,7 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'submitEnquiryDetails', 'strict')): ?>
   <!-- ENQUIRY REQUEST FORM -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
@@ -1235,7 +1235,7 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'viewEnquiryDetails', 'strict')): ?>
   <!-- ENQUIRY VIEWING FORM -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <div class="container-xxl d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 py-8 px-8 py-md-8">
@@ -1389,7 +1389,7 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'oldEnquiryDetails', 'strict')): ?>
   <!-- OLD ENQUIRY VIEWING FORM -->
-  <section class="section-border border-primary min-vh-100">
+  <section class="my-auto">
     <div class="container-xxl d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 py-8 px-8 py-md-8">

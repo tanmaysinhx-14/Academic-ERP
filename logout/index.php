@@ -66,9 +66,9 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container d-flex flex-column">
-    <div class="row gx-0 align-items-start justify-content-start min-vh-100">
+    <div class="row gx-0 align-items-start justify-content-start">
       <div class="col-12 col-lg-8 col-md-10 px-8 py-8">
           <span class="badge rounded-pill text-bg-primary-subtle mb-4">
             <?php echo ucfirst((string) $currentUserRole); ?> Account

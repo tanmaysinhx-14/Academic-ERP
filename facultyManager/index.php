@@ -490,7 +490,7 @@ $breadcrumb_title_active  = 'Faculty Records';
 require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container-xxl d-flex flex-column">
     <div class="row gx-0 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
@@ -558,7 +558,7 @@ require_once '../components/breadcrumb.php';
                           $displayFacultyEmail    = htmlspecialchars($record['faculty_email']          ?? '—', ENT_QUOTES, 'UTF-8');
                           $displayFacultyUsercode = htmlspecialchars($record['faculty_usercode']       ?? '—', ENT_QUOTES, 'UTF-8');
                           $displayFacultyUsername = htmlspecialchars($record['faculty_username']       ?? '',  ENT_QUOTES, 'UTF-8');
-                          $displayFacultyBio      = htmlspecialchars($record['faculty_bio']            ?? '',  ENT_QUOTES, 'UTF-8');
+                          $displayFacultyBio      = htmlspecialchars_decode($record['faculty_bio']     ?? '',  ENT_QUOTES);
                           $displayReferenceCode   = htmlspecialchars($record['faculty_reference_code'] ?? '',  ENT_QUOTES, 'UTF-8');
                           $displayBatchValue      = htmlspecialchars($record['faculty_batch_list']     ?? '[]', ENT_QUOTES, 'UTF-8');
                           $displayCreationTs      = htmlspecialchars($record['faculty_account_creation_timestamp'] ?? '—', ENT_QUOTES, 'UTF-8');
@@ -962,6 +962,27 @@ require_once '../components/breadcrumb.php';
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
+    function htmlspecialchars_decode(string, quote_style = 'ENT_COMPAT') {
+      if (!string) return '';
+
+      let str = string;
+
+      str = str.replace(/&amp;/g, '&'); // decode first layer
+
+      str = str.replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+
+      if (quote_style !== 'ENT_NOQUOTES') {
+        str = str.replace(/&quot;/g, '"');
+      }
+
+      if (quote_style === 'ENT_QUOTES') {
+        str = str.replace(/&#0*39;/g, "'");
+      }
+
+      return str;
+    }
+
   // Edit dialog
   function openEditModal(btn) {
     const {
@@ -977,7 +998,7 @@ require_once '../components/breadcrumb.php';
     document.getElementById('edit_faculty_name').value = name;
     document.getElementById('edit_faculty_email').value = email;
     document.getElementById('edit_faculty_username').value = username;
-    document.getElementById('edit_faculty_bio').value = bio;
+    document.getElementById('edit_faculty_bio').value = htmlspecialchars_decode(bio);
     document.getElementById('edit_faculty_account_activation_status').checked = activated === '1';
 
     const selectedBatches = JSON.parse(batches || '[]');

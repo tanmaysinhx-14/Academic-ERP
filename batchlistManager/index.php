@@ -98,9 +98,9 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="section-border border-primary">
+<section class="my-auto">
   <div class="container-xxl d-flex flex-column">
-    <div class="row align-items-center justify-content-center gx-0 min-vh-100 px-8 py-8">
+    <div class="row gx-0 align-items-center justify-content-center px-8 py-8">
       <form method="POST" action="./">
         <div class="d-flex row mb-6">
           <div class="col">

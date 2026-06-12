@@ -85,7 +85,7 @@
            WHERE student_usercode = :usercode
            LIMIT 1'
         );
-        $clearDeactivationTimestamp->bindValue(':deactivationTimestamp', '01/01/2000 00:00:00', PDO::PARAM_STR);
+        $clearDeactivationTimestamp->bindValue(':deactivationTimestamp', '2000-01-01 00:00:00', PDO::PARAM_STR);
         $clearDeactivationTimestamp->bindValue(':usercode', $userRecord['student_usercode'], PDO::PARAM_STR);
         $clearDeactivationTimestamp->execute();
 
@@ -165,16 +165,18 @@
   }
 
   $loginRateLimitKey = 'accounts_login';
+  $studentReactivationRateLimitKey = 'accounts_student_reactivation';
 
   if (isset($_POST['loginUserBtn'])) {
-    $enteredEmail    = escapeOutput($_POST['email']) ?? null;
-    $enteredPassword = escapeOutput($_POST['password']) ?? null;
-    $csrfToken       = escapeOutput($_POST['csrf_token']) ?? null;
-    $userRole        = escapeOutput($_POST['chosen_userRole']) ?? null;
+    $enteredEmail    = normalizeInput($_POST['email'] ?? null);
+    $enteredPassword = readPasswordInput($_POST['password'] ?? null);
+    $csrfToken       = normalizeInput($_POST['csrf_token'] ?? null);
+    $userRole        = normalizeInput($_POST['chosen_userRole'] ?? null);
     $rememberMe      = $_POST['optForRememberMe'] ?? 'off';
     $loginFailed = false;
+    $loginRateLimitIdentity = buildRequestRateLimitIdentity($loginRateLimitKey);
 
-    $rateLimit = getRateLimitStatus($loginRateLimitKey, 5, 900, 300);
+    $rateLimit = getDatabaseRateLimitStatus($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
     if (($rateLimit['limited'] ?? false) === true) {
       $retryAfter = max(1, (int) ($rateLimit['retry_after'] ?? 0));
       setToast('Too many sign-in attempts. Please wait ' . $retryAfter . ' seconds before trying again.', 'danger', 7000);
@@ -199,7 +201,7 @@
                 }
                 else {
                   $continueLoginWithPasswordVerification = false;
-                  $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+                  $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
 
                   setToast('Please enter a valid password.', 'danger', 7000);
 
@@ -217,19 +219,28 @@
                 if (password_verify($enteredPassword, $storedPassword)) {
                   if (checkForEquality($userRole, 'student', 'strict') && checkForEquality((int) ($userRecord['student_account_activation_status'] ?? 0), 0, 'strict')) { // Student Account Deactivated. Attempt for Reactivation under 30-day window.
                     if (getSecondsPassed($userRecord['student_account_deactivation_timestamp'] ?? '') <= 2592000) {
-                      if (!reactivateStudentAccount($db1, $db2, $userRecord)) { // Error Activating Student Account
+                      $reactivationRateLimitIdentity = buildRequestRateLimitIdentity($studentReactivationRateLimitKey . '|' . ($userRecord['student_usercode'] ?? ''));
+                      $reactivationRateLimit = getDatabaseRateLimitStatus($db2, $studentReactivationRateLimitKey, $reactivationRateLimitIdentity, 3, 3600, 1800);
+
+                      if (($reactivationRateLimit['limited'] ?? false) === true) {
+                        setToast('Too many reactivation attempts. Please wait ' . max(1, (int) ($reactivationRateLimit['retry_after'] ?? 0)) . ' seconds before trying again.', 'danger', 7000);
+                      }
+                      elseif (!reactivateStudentAccount($db1, $db2, $userRecord)) { // Error Activating Student Account
+                        registerDatabaseRateLimitFailure($db2, $studentReactivationRateLimitKey, $reactivationRateLimitIdentity, 3, 3600, 1800);
                         setToast('Failed to reactivate student account.', 'danger', 7000);
                       }
                       else { // Student Account Reactivated
+                        touchUserRateLimitTimestamp($db1, 'student', $userRecord['student_usercode'], 'student_reactivation_rate_limit_timestamp');
                         if(completeLogin($db1, $userRole, $userRecord, $rememberMe)) {
                           queueLoginAttemptNotification($db2, $userRole, $userRecord);
-                          clearRateLimit($loginRateLimitKey);
+                          clearDatabaseRateLimit($db2, $loginRateLimitKey, $loginRateLimitIdentity);
+                          clearDatabaseRateLimit($db2, $studentReactivationRateLimitKey, $reactivationRateLimitIdentity);
                           setToast('Login successful. Taking you to Dashboard.', 'success', 7000);
                           redirectTo('../dashboard/', 3);
                         }
                         else { // Login Attempt couldn't be completed
                           setToast('Error occured while creating your login session. Contact Admin.', 'danger', 7000);
-                          $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+                          $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
                         }
                       }
                     }
@@ -240,19 +251,19 @@
                   else {
                     if (completeLogin($db1, $userRole, $userRecord, $rememberMe)) {
                       queueLoginAttemptNotification($db2, $userRole, $userRecord);
-                      clearRateLimit($loginRateLimitKey);
+                      clearDatabaseRateLimit($db2, $loginRateLimitKey, $loginRateLimitIdentity);
                       setToast('Login successful. Taking you to Dashboard.', 'success', 7000);
                       redirectTo('../dashboard/', 3);
                     }
                     else {
                       setToast('Error occured while creating your login session. Contact Admin.', 'danger', 7000);
-                      $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+                      $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
                     }
                   }
                 }
                 else { // Invalid Password
                   setToast('Invalid password. Check your credentials and try again.', 'danger', 7000);
-                  $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+                  $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
 
                   $passwordValidationStatus = 'is-invalid';
                   $passwordHelpText = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
@@ -264,7 +275,7 @@
             }
             else { // No User Exists for Provided E-Mail
               setToast('No user found for the provided email address.', 'danger', 7000);
-              $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+              $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
 
               $emailValidationStatus = 'is-invalid';
               $emailHelpText = '<span class="text-danger d-flex align-items-center justify-content-center my-3">
@@ -275,7 +286,7 @@
           }
         }
         else { // Either of User Fields can't be validated
-          $retryAfter = registerRateLimitFailure($loginRateLimitKey, 5, 900, 300);
+          $retryAfter = registerDatabaseRateLimitFailure($db2, $loginRateLimitKey, $loginRateLimitIdentity, 5, 900, 300);
 
           setToast('Please enter a valid email address.', 'danger', 7000);
 
@@ -315,7 +326,7 @@
           // Current Active Session ID must match Current Saved Remember Me Session ID
           if (checkForEquality($rememberMeSessionID, $rememberMeUserRecord[$roleMap['current_session_column']], 'strict')) {
             if (isset($_POST['loginUsingSavedUserCookie']) || isset($_POST['deleteUserCookie'])) {
-              $csrfToken = escapeOutput($_POST['csrf_token'] ?? null);
+              $csrfToken = normalizeInput($_POST['csrf_token'] ?? null);
 
               if (!validateCsrfToken($csrfToken)) {
                 setToast('Page Reload Activity detected. Please avoid reloading the page.', 'danger', 7000);
@@ -334,7 +345,7 @@
               else setToast('Some error occurred during login. Taking you to Dashboard', 'danger', 7000);
 
               queueLoginAttemptNotification($db2, $rememberMeUserRole, $rememberMeUserRecord);
-              clearRateLimit($loginRateLimitKey);
+              clearDatabaseRateLimit($db2, $loginRateLimitKey, buildRequestRateLimitIdentity($loginRateLimitKey));
               redirectTo('../dashboard/', 3);
             }
             elseif (isset($_POST['deleteUserCookie'])) {
@@ -377,9 +388,9 @@
 ?>
 
 <?php if (checkForEquality(checkRememberMeCookiePresence(), true, 'strict')): // REMEMBER ME Cookie Present ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-md-9 col-lg-6 py-8 py-md-11 px-5 px-sm-0">
           <h1 class="mb-7 fw-bold text-center">
             Login using Saved User Details
@@ -416,9 +427,9 @@
   </section>
 
 <?php elseif (checkForEquality(checkRememberMeCookiePresence(), false, 'strict')): // REMEMBER ME Cookie Not Present ?>
-  <section class="section-border border-primary">
+  <section class="my-auto">
     <div class="container d-flex flex-column">
-      <div class="row gx-0 align-items-center justify-content-center min-vh-100">
+      <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-9 px-8 px-md-5 py-8">
           <h1 class="mb-2 fw-bold text-center">
             Login

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=0.75" />
@@ -27,53 +27,53 @@
       <?php echo isset($page_title) ? escapeOutput($page_title) : 'Unknown Page Title'; ?>
     </title>
   </head>
-  <body>
-    <div>
-      <nav class="navbar navbar-expand-lg bg-dark border-bottom d-none d-lg-flex">
-        <div class="container">
-          <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
-            <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
-          </a>
-          <span class="bg-primary p-2 px-5 rounded-pill text-white ms-auto fw-bold">Accounts Portal</span>
-        </div>
-      </nav>
 
-      <nav class="navbar navbar-expand-lg bg-dark border-bottom d-flex d-lg-none">
-        <div class="container">
-          <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
-            <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
-          </a>
-        </div>
-      </nav>
+  <body class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg bg-dark border-bottom d-none d-lg-flex">
+      <div class="container">
+        <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
+          <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
+        </a>
+        <span class="bg-primary p-2 px-5 rounded-pill text-white ms-auto fw-bold">Accounts Portal</span>
+      </div>
+    </nav>
 
-      <?php if (!empty($_SESSION['toasts'])): ?>
-        <div class="toast-float" aria-live="polite" aria-atomic="true">
-          <?php foreach ($_SESSION['toasts'] as $toast): ?>
-            <div class="toast toast-<?= htmlspecialchars($toast['type'], ENT_QUOTES, 'UTF-8') ?>"
-                role="alert"
-                data-duration="<?= (int) $toast['duration'] ?>">
-              <div class="toast-body ff-inter">
-                <?= htmlspecialchars($toast['message'], ENT_QUOTES, 'UTF-8') ?>
-              </div>
+    <nav class="navbar navbar-expand-lg bg-dark border-bottom d-flex d-lg-none">
+      <div class="container">
+        <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
+          <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
+        </a>
+      </div>
+    </nav>
+
+    <?php if (!empty($_SESSION['toasts'])): ?>
+      <div class="toast-float" aria-live="polite" aria-atomic="true">
+        <?php foreach ($_SESSION['toasts'] as $toast): ?>
+          <div class="toast toast-<?= htmlspecialchars($toast['type'], ENT_QUOTES, 'UTF-8') ?>"
+              role="alert"
+              data-duration="<?= (int) $toast['duration'] ?>">
+            <div class="toast-body ff-inter">
+              <?= htmlspecialchars($toast['message'], ENT_QUOTES, 'UTF-8') ?>
             </div>
-          <?php endforeach; ?>
-        </div>
-        <?php unset($_SESSION['toasts']); ?>
-      <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <?php unset($_SESSION['toasts']); ?>
+    <?php endif; ?>
 
-      <script type="text/javascript">
-        window.addEventListener('load', () => {
-          document.querySelectorAll('.toast').forEach(toast => {
-            const duration = parseInt(toast.dataset.duration, 10) || 7000;
+    <script type="text/javascript">
+      window.addEventListener('load', () => {
+        document.querySelectorAll('.toast').forEach(toast => {
+          const duration = parseInt(toast.dataset.duration, 10) || 7000;
 
-            setTimeout(() => {
-              toast.classList.add('toast-hide');
-              toast.addEventListener(
-                'animationend',
-                () => toast.remove(),
-                { once: true }
-              );
-            }, duration);
-          });
+          setTimeout(() => {
+            toast.classList.add('toast-hide');
+            toast.addEventListener(
+              'animationend',
+              () => toast.remove(),
+              { once: true }
+            );
+          }, duration);
         });
-      </script>
+      });
+    </script>
