@@ -66,14 +66,14 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container d-flex flex-column">
     <div class="row gx-0 align-items-start justify-content-start">
       <div class="col-12 col-lg-8 col-md-10 px-8 py-8">
           <span class="badge rounded-pill text-bg-primary-subtle mb-4">
             <?php echo ucfirst((string) $currentUserRole); ?> Account
           </span>
-          <h1 class="display-4 fw-bold">
+          <h1 class="display-4 fw-bolder">
           Sign out from this session?
         </h1>
         <p class="mb-4 text-body-secondary">

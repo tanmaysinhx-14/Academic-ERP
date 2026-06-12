@@ -490,13 +490,13 @@ $breadcrumb_title_active  = 'Faculty Records';
 require_once '../components/breadcrumb.php';
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container-xxl d-flex flex-column">
     <div class="row gx-0 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
         <div class="row mb-5">
           <div class="col-12">
-            <h2 class="fw-bold mb-1">Faculty Management</h2>
+            <h2 class="fw-bolder mb-1">Faculty Management</h2>
             <p class="text-body-secondary mb-0">View existing faculty records and register new faculty accounts.</p>
           </div>
         </div>
@@ -569,7 +569,7 @@ require_once '../components/breadcrumb.php';
                             data-search-email="<?php echo strtolower($displayFacultyEmail); ?>">
                             <td class="ps-4 py-3">
                               <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold"
+                                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bolder"
                                   style="width:38px;height:38px;font-size:.85rem;flex-shrink:0;">
                                   <?php echo strtoupper(substr($record['faculty_name'] ?? '?', 0, 1)); ?>
                                 </div>

@@ -85,11 +85,11 @@
 ?>
 
 <?php if(checkForEquality($currentUserRole, 'admin', 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 px-0 px-lg-8 py-8">
-          <p class="mb-4 display-4 fw-bold">
+          <p class="mb-4 display-4 fw-bolder">
             Routine Viewer
             <span class="d-block fs-3 mt-3">for <?php echo date('F') . ' ' . date('Y'); ?></span>
           </p>
@@ -156,11 +156,11 @@
   </section>
 
 <?php elseif(checkForEquality($currentUserRole, 'student', 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-start justify-content-center">
         <div class="col-12 px-0 px-lg-8 py-8">
-          <p class="my-10 mb-4 display-4 fw-bold">
+          <p class="my-10 mb-4 display-4 fw-bolder">
             <?php if (checkForEquality($currentUserRole, 'student', 'strict')): ?>
               Routine of <?php echo prettyPrintClassCode((string) $selectedBatch); ?>
             <?php else: ?>

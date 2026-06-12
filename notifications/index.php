@@ -254,14 +254,14 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container-xxl d-flex flex-column">
 
     <div class="row g-4 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
         <div class="row mb-5">
           <div class="col-12">
-            <h2 class="fw-bold mb-1">Notification Manager</h2>
+            <h2 class="fw-bolder mb-1">Notification Manager</h2>
             <p class="text-body-secondary mb-0">Create and manage notifications for faculty and student batches.</p>
           </div>
         </div>

@@ -98,13 +98,13 @@
   require_once '../components/breadcrumb.php';
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container-xxl d-flex flex-column">
     <div class="row gx-0 align-items-center justify-content-center px-8 py-8">
       <form method="POST" action="./">
         <div class="d-flex row mb-6">
           <div class="col">
-            <h2 class="fw-bold mb-1">Active Batchlist Manager</h2>
+            <h2 class="fw-bolder mb-1">Active Batchlist Manager</h2>
             <p class="text-body-secondary mb-6">Select the active batches for your institute.</p>
           </div>
           <div class="col-auto">
@@ -118,7 +118,7 @@
         <div class="d-flex flex-wrap gap-3">
           <!-- CBSE Batch Options -->
           <div class="card col px-8 py-8 bg-white shadow-lg rounded-3">
-            <div class="display-4 text-center fw-bold mb-7">
+            <div class="display-4 text-center fw-bolder mb-7">
               CBSE
             </div>
 
@@ -253,7 +253,7 @@
 
           <!-- BSEB Batch Options -->
           <div class="card col px-8 py-8 bg-white shadow-lg rounded-3">
-            <div class="display-4 text-center fw-bold mb-7">
+            <div class="display-4 text-center fw-bolder mb-7">
               BSEB
             </div>
 
@@ -340,7 +340,7 @@
 
           <!-- ICSE Batch Options -->
           <div class="card col px-8 py-8 bg-white shadow-lg rounded-3">
-            <div class="display-4 text-center fw-bold mb-7">
+            <div class="display-4 text-center fw-bolder mb-7">
               ICSE
             </div>
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-100">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=0.75" />
@@ -32,16 +32,16 @@
     <nav class="navbar navbar-expand-lg bg-dark border-bottom d-none d-lg-flex">
       <div class="container">
         <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
-          <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
+          <span class="logo-text"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
         </a>
-        <span class="bg-primary p-2 px-5 rounded-pill text-white ms-auto fw-bold">Accounts Portal</span>
+        <span class="bg-primary p-2 px-5 rounded-pill text-white ms-auto fw-bolder">Accounts Portal</span>
       </div>
     </nav>
 
     <nav class="navbar navbar-expand-lg bg-dark border-bottom d-flex d-lg-none">
       <div class="container">
         <a class="navbar-brand text-white" href="<?php echo isset($logo_href) ? escapeOutput($logo_href) : '#'; ?>">
-          <span class="ff-poppins logo-md"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
+          <span class="logo-text"><?php echo isset($logo_text) ? escapeOutput($logo_text) : 'Career Institute'; ?></span>
         </a>
       </div>
     </nav>
@@ -52,7 +52,7 @@
           <div class="toast toast-<?= htmlspecialchars($toast['type'], ENT_QUOTES, 'UTF-8') ?>"
               role="alert"
               data-duration="<?= (int) $toast['duration'] ?>">
-            <div class="toast-body ff-inter">
+            <div class="toast-body">
               <?= htmlspecialchars($toast['message'], ENT_QUOTES, 'UTF-8') ?>
             </div>
           </div>

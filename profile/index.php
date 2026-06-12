@@ -296,17 +296,17 @@
 
 <!-- USERNAME ENTERING FORM -->
 <?php if(checkForEquality($userRecord['student_has_updated_username'], 0, 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <!-- FOR SMALL SCREENS -->  
     <header class="bg-dark pt-9 pb-11 d-md-none">
       <div class="container-lg px-7">
         <div class="d-flex flex-column">
           <div class="col">
-            <h1 class="fw-bold text-white mb-2">
+            <h1 class="fw-bolder text-white mb-2">
               Account Settings
             </h1>
             <p class="fs-lg text-white text-opacity-75 mb-0">
-              Settings for <span class="text-white fw-bold"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
+              Settings for <span class="text-white fw-bolder"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
             </p>
           </div>
           <div class="col-auto mt-7">
@@ -323,11 +323,11 @@
       <div class="container-lg">
         <div class="row align-items-center">
           <div class="col">
-            <h1 class="fw-bold text-white mb-2">
+            <h1 class="fw-bolder text-white mb-2">
               Account Settings
             </h1>
             <p class="fs-lg text-white text-opacity-75 mb-0">
-              Settings for <span class="text-white fw-bold"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
+              Settings for <span class="text-white fw-bolder"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
             </p>
           </div>
           <div class="col-auto">
@@ -347,7 +347,7 @@
               <div class="card-body mb-5">
                 <div class="row align-items-center">
                   <div class="col">
-                    <h3 class="fw-bold">Update your Username <text class="text-danger">*</text></h3>
+                    <h3 class="fw-bolder">Update your Username <text class="text-danger">*</text></h3>
                   </div>
                 </div>
                 <form method="POST" action="./">
@@ -383,17 +383,17 @@
 
 <!-- FIRST TIME PROFILE UPDATING -->
 <?php elseif(checkForEquality($userRecord['student_has_updated_username'], 1, 'strict')): ?>
-  <section class="my-auto">  
+  <section>  
     <!-- FOR SMALL SCREENS -->  
     <header class="bg-dark pt-9 pb-11 d-md-none">
       <div class="container-lg px-7">
         <div class="d-flex flex-column">
           <div class="col">
-            <h1 class="fw-bold text-white mb-2">
+            <h1 class="fw-bolder text-white mb-2">
               Account Settings
             </h1>
             <p class="fs-lg text-white text-opacity-75 mb-0">
-              Settings for <span class="text-white fw-bold"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
+              Settings for <span class="text-white fw-bolder"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
             </p>
           </div>
           <div class="col-auto mt-7">
@@ -410,11 +410,11 @@
       <div class="container-lg">
         <div class="row align-items-center">
           <div class="col">
-            <h1 class="fw-bold text-white mb-2">
+            <h1 class="fw-bolder text-white mb-2">
               Account Settings
             </h1>
             <p class="fs-lg text-white text-opacity-75 mb-0">
-              Settings for <span class="text-white fw-bold"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
+              Settings for <span class="text-white fw-bolder"><?php echo escapeOutput($_SESSION['email'] ?? null); ?></span>
             </p>
           </div>
           <div class="col-auto">
@@ -434,7 +434,7 @@
             <div class="card card-bleed shadow-light-lg">
               <div class="collapse d-md-block" id="sidenavCollapse">
                 <div class="card-body">
-                  <h6 class="fw-bold text-uppercase mb-3">
+                  <h6 class="fw-bolder text-uppercase mb-3">
                     Account
                   </h6>
                   <ul class="card-list list text-gray-700 mb-6">

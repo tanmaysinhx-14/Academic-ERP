@@ -388,11 +388,11 @@
 ?>
 
 <?php if (checkForEquality(checkRememberMeCookiePresence(), true, 'strict')): // REMEMBER ME Cookie Present ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-md-9 col-lg-6 py-8 py-md-11 px-5 px-sm-0">
-          <h1 class="mb-7 fw-bold text-center">
+          <h1 class="mb-7 fw-bolder text-center">
             Login using Saved User Details
           </h1>
           <form class="mb-6" method="POST" action="./">
@@ -427,11 +427,11 @@
   </section>
 
 <?php elseif (checkForEquality(checkRememberMeCookiePresence(), false, 'strict')): // REMEMBER ME Cookie Not Present ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-9 px-8 px-md-5 py-8">
-          <h1 class="mb-2 fw-bold text-center">
+          <h1 class="mb-2 fw-bolder text-center">
             Login
           </h1>
           <p class="text-lead mb-7 text-center text-body-secondary">

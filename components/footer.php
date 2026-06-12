@@ -3,9 +3,9 @@
 
     <footer>
       <div class="row text-center bg-dark text-white py-5">
-        <span class="col-12 px-5 text-center text-gray-300 ff-inter">
+        <span class="col-12 px-5 text-center text-gray-300">
           Developed and Managed by
-          <a class="text-decoration-none text-white fw-bold"
+          <a class="text-decoration-none text-white fw-bolder"
               href="https://developer.careerinstitute.co.in/"
               target="_blank"
               rel="noreferrer">

@@ -14,7 +14,7 @@
   require_once '../components/header.php'; 
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container d-flex flex-column">
     <div class="row gx-0 align-items-center justify-content-center">
       <div class="d-flex flex-column align-items-center justify-content-center col-md-8 px-8 px-md-8 py-8 py-md-8">
@@ -27,7 +27,7 @@
           </g>
         </svg>
 
-        <h1 class="mb-0 fw-bold text-center">
+        <h1 class="mb-0 fw-bolder text-center">
           Maintenance Mode
         </h1>
 

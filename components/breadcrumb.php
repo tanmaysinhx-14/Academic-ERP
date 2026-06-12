@@ -1,7 +1,7 @@
 <div class="text-primary-emphasis bg-primary-subtle">
   <div class="container">
     <nav aria-label="breadcrumb">
-      <ol class="breadcrumb ff-inter">
+      <ol class="breadcrumb">
 
         <?php if(isset($breadcrumb_url_1)): ?>
           <li class="breadcrumb-item">

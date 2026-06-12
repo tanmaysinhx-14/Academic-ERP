@@ -5,123 +5,37 @@
 
 html,
 body {
-  overflow-x: hidden !important;
-  margin: 0;
-  padding: 0 0 0 0 !important;
+  min-width: 100vw !important;
+  min-height: 100vh !important;
 }
 
-
-.logo-sm {
-  font-size: 20px;
-  font-weight: 700;
+/* Section fills all remaining space so footer is always at the very bottom */
+body > section {
+  flex: 1 0 auto;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
-.logo-md {
+/* Short-content pages: center content vertically within the grown section */
+body > section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Prevent footer from shrinking on tall-content pages */
+footer {
+  flex-shrink: 0;
+}
+
+.logo-text {
   font-size: 28px;
   font-weight: 700;
-}
 
-.logo-lg {
-  font-size: 36px;
-  font-weight: 700;
-}
-
-.fw-bold {
-  font-weight: 700 !important;
-  text-rendering: geometricPrecision;
-}
-
-.ff-sourcesans3 {
-  font-family: "Source Sans 3", sans-serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-}
-
-.ff-poppins {
   font-family: "Poppins", sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
 }
-
-.ff-inter {
-  font-family: "Inter", sans-serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-}
-
-@media only screen and (min-width: 768px) {
-  .hide-lg {
-    display: none !important;
-  }
-}
-
-@media only screen and (max-width: 1000px) {
-  .hide-md {
-    display: none !important;
-  }
-}
-
-@media only screen and (max-width: 768px) {
-  .hide-sm {
-    display: none !important;
-  }
-}
-
-@media only screen and (max-width: 500px) {
-  .hide-xsm {
-    display: none !important;
-  }
-}
-
-/* for Web-Navigation Bar in Website (Breakpoint: 992px) */
-@media only screen and (max-width: 992px) {
-  .lg-screens {
-    display: none !important;
-  }
-
-  .sm-md-screens {
-    display: block !important;
-  }
-}
-
-@media only screen and (min-width: 992px) {
-  .lg-screens {
-    display: block !important;
-  }
-
-  .sm-md-screens {
-    display: none !important;
-  }
-}
-
-.flex-wrap {
-  flex-wrap: wrap;
-}
-
-.flex-content {
-  flex: content;
-}
-
-.hide,
-.hidden {
-  display: none;
-}
-
-/* For Bottom Credits */
-@media only screen and (max-width: 1000px) {
-  .web-footer {
-    margin-bottom: 0;
-  }
-
-  .app-footer {
-    margin-bottom: 80px !important;
-  }
-}
-
-.rounded-corner-sm {
-  border-radius: 8px
-}
-
 
 
 /* For Error Displaying */

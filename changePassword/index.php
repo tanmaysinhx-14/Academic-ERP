@@ -585,11 +585,11 @@
 
 <?php if(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_REQUEST_PENDING', 'strict')): ?>
   <?php if(checkForEquality(checkLoginStatus($db1), true, 'strict')): // User Logged In?>
-    <section class="my-auto">
+    <section>
       <div class="container d-flex flex-column">
         <div class="row gx-0 align-items-start justify-content-center">
           <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
-            <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
+            <h1 class="mb-0 fw-bolder text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
               To update your account password, we first need to verify your identity.
             </p>
@@ -616,11 +616,11 @@
     </section>
 
   <?php else: // User Logged Out ?>
-    <section class="my-auto">
+    <section>
       <div class="container d-flex flex-column">
         <div class="row gx-0 align-items-center justify-content-center">
           <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
-            <h1 class="mb-0 fw-bold text-center">Reset Password</h1>
+            <h1 class="mb-0 fw-bolder text-center">Reset Password</h1>
             <p class="lead mb-7 text-center text-body-secondary">
               To update your account password, we first need to verify your identity.
             </p>
@@ -679,11 +679,11 @@
   <?php endif; ?>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'OTP_VERIFICATION_PENDING', 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
-          <h1 class="mb-0 fw-bold text-center">Verify OTP</h1>
+          <h1 class="mb-0 fw-bolder text-center">Verify OTP</h1>
           <p class="lead mb-7 text-center text-body-secondary">
             Enter the One-Time Password (OTP) sent to your registered email address to continue.
           </p>
@@ -722,11 +722,11 @@
   </section>
 
 <?php elseif(checkForEquality($_SESSION['changePasswordFormStatus'], 'CHANGE_PASSWORD_PENDING', 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 col-lg-6 col-md-8 px-8 py-8">
-          <h1 class="mb-0 fw-bold text-center">Change Password</h1>
+          <h1 class="mb-0 fw-bolder text-center">Change Password</h1>
           <p class="lead mb-7 text-center text-body-secondary">
             Set a fresh password for your account and confirm it to finish the reset.
           </p>

@@ -732,13 +732,13 @@ require_once '../components/breadcrumb.php';
 
 <link rel="stylesheet" type="text/css" href="./userManager.css">
 
-<section class="my-auto">
+<section>
   <div class="container-xxl d-flex flex-column">
     <div class="row gx-0 align-items-start justify-content-center">
       <div class="col-12 px-8 py-8">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-6">
           <div>
-            <h2 class="fw-bold mb-1"><?php echo ciEscape($pageHeading); ?></h2>
+            <h2 class="fw-bolder mb-1"><?php echo ciEscape($pageHeading); ?></h2>
             <p class="text-body-secondary mb-0"><?php echo ciEscape($pageSubheading); ?></p>
           </div>
           <?php if ($viewParameter !== null): ?>

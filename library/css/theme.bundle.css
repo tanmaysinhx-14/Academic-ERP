@@ -12005,12 +12005,12 @@ fieldset:disabled .btn {
   font-weight: 500 !important
 }
 
-.fw-bold,
+.fw-bolder,
 .fw-semibold {
   font-weight: 600 !important
 }
 
-.fw-bolder {
+.fw-bolderer {
   font-weight: 700 !important
 }
 

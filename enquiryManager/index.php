@@ -252,11 +252,11 @@
 
 <?php if(checkForEquality($enquiryFormStatus, 'selectManagerTask', 'strict')): ?>
   <!-- MAIN MENU OF ENQUIRY MANAGER -->
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row justify-content-center align-items-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
-          <p class="mb-7 display-4 fw-bold text-center">Select Enquiry Manager Task</p>
+          <p class="mb-7 display-4 fw-bolder text-center">Select Enquiry Manager Task</p>
 
           <div class="d-flex flex-column justify-content-center align-items-center">
             <a class="col-auto btn btn-primary btn-lg mb-7 w-50" 
@@ -273,11 +273,11 @@
   </section>
 
   <!-- ENQUIRY REQUEST FORM -->
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
-          <h1 class="mb-0 fw-bold text-center">
+          <h1 class="mb-0 fw-bolder text-center">
             Submit Enquiry Request
           </h1>
           <p class="lead mb-7 text-center text-body-secondary">
@@ -319,7 +319,7 @@
 
             <!-- STUDENT + INSTITUTE -->
             <div id="student-institute" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Student – Institute Enquiry
               </p>
 
@@ -399,7 +399,7 @@
 
             <!-- STUDENT + TUITION -->
             <div id="student-tuition" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Student – Tuition Enquiry
               </p>
 
@@ -512,7 +512,7 @@
 
             <!-- FACULTY + INSTITUTE -->
             <div id="faculty-institute" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Faculty – Tuition Enquiry
               </p>
 
@@ -610,7 +610,7 @@
 
             <!-- FACULTY + TUITION -->
             <div id="faculty-tuition" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Faculty – Tuition Enquiry
               </p>
 
@@ -784,11 +784,11 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'submitEnquiryDetails', 'strict')): ?>
   <!-- ENQUIRY REQUEST FORM -->
-  <section class="my-auto">
+  <section>
     <div class="container d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 col-lg-9 col-md-10 py-8 py-md-8">
-          <h1 class="mb-0 fw-bold text-center">
+          <h1 class="mb-0 fw-bolder text-center">
             Submit Enquiry Request
           </h1>
           <p class="lead mb-7 text-center text-body-secondary">
@@ -830,7 +830,7 @@
 
             <!-- STUDENT + INSTITUTE -->
             <div id="student-institute" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Student – Institute Enquiry
               </p>
 
@@ -910,7 +910,7 @@
 
             <!-- STUDENT + TUITION -->
             <div id="student-tuition" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Student – Tuition Enquiry
               </p>
 
@@ -1023,7 +1023,7 @@
 
             <!-- FACULTY + INSTITUTE -->
             <div id="faculty-institute" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Faculty – Tuition Enquiry
               </p>
 
@@ -1121,7 +1121,7 @@
 
             <!-- FACULTY + TUITION -->
             <div id="faculty-tuition" class="d-none">
-              <p class="mb-7 display-4 fw-bold text-center">
+              <p class="mb-7 display-4 fw-bolder text-center">
                 Faculty – Tuition Enquiry
               </p>
 
@@ -1235,7 +1235,7 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'viewEnquiryDetails', 'strict')): ?>
   <!-- ENQUIRY VIEWING FORM -->
-  <section class="my-auto">
+  <section>
     <div class="container-xxl d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 py-8 px-8 py-md-8">
@@ -1289,7 +1289,7 @@
             ?>
 
             <div class="mt-10 table-responsive">
-              <p class="mb-10 display-4 fw-bold text-center">Saved Enquiry Records</p>
+              <p class="mb-10 display-4 fw-bolder text-center">Saved Enquiry Records</p>
               <table class="table table-bordered table-striped table-sm align-middle">
                 <thead class="table-primary text-center">
                   <tr>
@@ -1389,7 +1389,7 @@
 
 <?php elseif(checkForEquality($enquiryFormStatus, 'oldEnquiryDetails', 'strict')): ?>
   <!-- OLD ENQUIRY VIEWING FORM -->
-  <section class="my-auto">
+  <section>
     <div class="container-xxl d-flex flex-column">
       <div class="row justify-content-center gx-0">
         <div class="col-12 py-8 px-8 py-md-8">
@@ -1440,7 +1440,7 @@
             ?>
 
             <div class="mt-10 table-responsive">
-              <p class="mb-10 display-4 fw-bold text-center">Old Enquiry Records</p>
+              <p class="mb-10 display-4 fw-bolder text-center">Old Enquiry Records</p>
               <table class="table table-bordered table-striped table-sm align-middle">
                 <thead class="table-primary text-center">
                   <tr>

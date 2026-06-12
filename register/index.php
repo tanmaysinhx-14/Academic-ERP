@@ -410,12 +410,12 @@
   require_once '../components/header.php';
 ?>
 
-<section class="my-auto">
+<section>
   <div class="container d-flex flex-column">
     <div class="row gx-0 align-items-between justify-content-center">
       <div class="col-12 col-lg-9 px-0 px-lg-8 py-8">
 
-        <p class="display-4 fw-bold text-center">Register</p>
+        <p class="display-4 fw-bolder text-center">Register</p>
         <p class="text-lead mb-5 text-center text-body-secondary">
           Create your student account to access classes, materials, and your dashboard.
         </p>
@@ -435,7 +435,7 @@
               <span class="badge bg-success-subtle text-success rounded-pill px-4 py-2 mb-3">
                 Request Submitted
               </span>
-              <h2 class="h3 fw-bold mb-1">Account Creation Request Received</h2>
+              <h2 class="h3 fw-bolder mb-1">Account Creation Request Received</h2>
               <small class="text-body-secondary">
                 Your details were saved successfully and are now waiting for admin approval.
               </small>
@@ -443,8 +443,8 @@
             <div class="card-body p-6 p-md-8">
               <div class="row g-4 align-items-start">
                 <div class="col-12 col-md-5">
-                  <p class="text-uppercase small text-body-secondary fw-bold mb-2">Reference Code</p>
-                  <p class="display-5 fw-bold text-primary mb-3"><?php echo $displayCode; ?></p>
+                  <p class="text-uppercase small text-body-secondary fw-bolder mb-2">Reference Code</p>
+                  <p class="display-5 fw-bolder text-primary mb-3"><?php echo $displayCode; ?></p>
                   <p class="text-body-secondary mb-0">
                     Keep this code safe. You need it during the approval process.
                   </p>

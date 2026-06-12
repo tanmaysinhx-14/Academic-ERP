@@ -78,7 +78,7 @@
 <?php if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): ?>
   <!-- Student Dashboard Here -->
   <?php if(checkForEquality((int)$userRecord['student_has_updated_account_profile'], 0, 'strict')): ?>
-    <section class="my-auto">
+    <section>
       <main class="pt-8 pt-md-11 pb-10 pb-md-15 bg-primary">
         <div class="shape shape-blur-3 text-white">
           <svg viewBox="0 0 1738 487" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -95,7 +95,7 @@
         <div class="container-lg text-white">
           <div class="row justify-content-center px-5">
             <div class="col-12 col-md-10">
-              <p class="display-2 mb-3 fw-bold text-white">Complete your profile to get started!</p>
+              <p class="display-2 mb-3 fw-bolder text-white">Complete your profile to get started!</p>
               <p class="my-7 lead">
                 Welcome! Before you dive into our services, we just need a few details to personalize your experience.
               </p>
@@ -127,7 +127,7 @@
         <div class="container">
           <div class="row justify-content-center px-5">
             <div class="col-12 col-md-10">
-              <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bold me-4">
+              <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bolder me-4">
                 Student Dashboard
               </span>
               <style>
@@ -139,7 +139,7 @@
                   100% { transform: translate(0, 0); opacity: 1; }
                 }
               </style>
-              <button class="badge bg-success rounded-pill border-0 px-4 mb-5 fs-sm fw-bold"
+              <button class="badge bg-success rounded-pill border-0 px-4 mb-5 fs-sm fw-bolder"
                       onclick="openDialog('notifDialog')">
                 Notifications
                 <svg class="notif-arrow"width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -148,7 +148,7 @@
               </button>
               <h1 class="display-2 text-white">
                 Welcome, 
-                <span class="fw-bold">
+                <span class="fw-bolder">
                   <?php echo escapeOutput($userRecord['student_username'] ?? 'User!'); ?>
                 </span>
               </h1>
@@ -325,12 +325,12 @@
       <div class="container">
         <div class="row justify-content-center px-5">
           <div class="col-12 col-md-10">
-            <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bold">
+            <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bolder">
               Faculty Dashboard
             </span>
             <h1 class="display-2 text-white">
               Welcome,
-              <span class="fw-bold">
+              <span class="fw-bolder">
                 <?php echo escapeOutput($userRecord['faculty_name'] ?? 'Faculty'); ?>
               </span>
             </h1>
@@ -425,7 +425,7 @@
                 </div>
                 <p class="lead text-dark mb-3">
                   Username:
-                  <span class="fw-bold">
+                  <span class="fw-bolder">
                     <?php echo escapeOutput($userRecord['faculty_username'] ?? 'Not set'); ?>
                   </span>
                 </p>
@@ -472,12 +472,12 @@
       <div class="container">
         <div class="row justify-content-center px-5">
           <div class="col-12 col-md-10">
-            <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bold">
+            <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bolder">
             Admin Dashboard
           </span>
             <h1 class="display-2 text-white">
               Welcome, 
-              <span class="fw-bold">
+              <span class="fw-bolder">
                 <?php echo escapeOutput($userRecord['admin_name'] ?? 'User!'); ?>
               </span>
             </h1>

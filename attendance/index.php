@@ -234,14 +234,14 @@
 <link rel="stylesheet" href="./attendance-styler.css" />
 
 <?php if (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'admin', 'strict')): ?>
-  <section class="my-auto">
+  <section>
     <div class="container-xxl d-flex flex-column">
       <div class="row gx-0 align-items-center justify-content-center">
         <div class="col-12 px-8 py-8">
 
           <?php if (checkForEquality($selectedBatch, null, 'strict')): ?>
 
-            <h2 class="fw-bold mb-1">Attendance</h2>
+            <h2 class="fw-bolder mb-1">Attendance</h2>
             <p class="text-body-secondary mb-6">Select a batch to manage or view attendance records.</p>
 
             <?php if (empty($activeBatchList)): ?>
@@ -269,7 +269,7 @@
 
             <div class="d-flex align-items-center justify-content-center flex-wrap gap-3 mb-5">
               <div>
-                <h2 class="fw-bold mb-1">
+                <h2 class="fw-bolder mb-1">
                   Attendance &mdash;
                   <span class="text-primary"><?= htmlspecialchars(prettyPrintClassCode($selectedBatch), ENT_QUOTES, 'UTF-8'); ?></span>
                 </h2>
@@ -310,7 +310,7 @@
                     <button type="button" class="btn btn-sm btn-secondary px-3" id="prevMonth">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
-                    <p id="calTitle" class="fs-lg fw-bolder text-center mb-0"></p>
+                    <p id="calTitle" class="fs-lg fw-bolderer text-center mb-0"></p>
                     <button type="button" class="btn btn-sm btn-secondary px-3" id="nextMonth">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
@@ -389,7 +389,7 @@
                   <button type="button" class="col-auto btn btn-sm btn-secondary px-3" id="prevViewMonth">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
-                  <p id="tableTitle" class="col fs-lg fw-bolder text-center mb-3"></p>
+                  <p id="tableTitle" class="col fs-lg fw-bolderer text-center mb-3"></p>
                   <button type="button" class="col-auto btn btn-sm btn-secondary px-3" id="nextViewMonth">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
@@ -647,13 +647,13 @@
 
 <?php elseif (checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')): ?>
 
-  <section class="my-auto">
+  <section>
     <div class="container-xxl d-flex flex-column">
       <div class="row gx-0 justify-content-center">
 
         <!-- CALENDAR -->
         <div class="col-12 col-xl-5 px-8 py-8">
-          <h5 class="fw-bold mb-4">Monthly View</h5>
+          <h5 class="fw-bolder mb-4">Monthly View</h5>
           <div class="d-flex row align-items-center mb-3 text-center">
             <button type="button" class="col-auto btn btn-xs btn-secondary" id="prevMonth">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.5303 5.46967C10.8232 5.76256 10.8232 6.23744 10.5303 6.53033L5.81066 11.25H20C20.4142 11.25 20.75 11.5858 20.75 12C20.75 12.4142 20.4142 12.75 20 12.75H5.81066L10.5303 17.4697C10.8232 17.7626 10.8232 18.2374 10.5303 18.5303C10.2374 18.8232 9.76256 18.8232 9.46967 18.5303L3.46967 12.5303C3.17678 12.2374 3.17678 11.7626 3.46967 11.4697L9.46967 5.46967C9.76256 5.17678 10.2374 5.17678 10.5303 5.46967Z" fill="#fff"/></svg>
@@ -679,7 +679,7 @@
         <!-- TABULAR SUMMARY -->
         <div class="col-12 col-xl-7 px-8 py-8 border-start">
           <div class="d-flex align-items-center justify-content-center flex-wrap gap-3 mb-4">
-            <h5 class="fw-bold mb-0">Academic Year Summary</h5>
+            <h5 class="fw-bolder mb-0">Academic Year Summary</h5>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-sm btn-secondary px-3" id="prevAcadYear">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -751,8 +751,8 @@
       tbody.innerHTML = rows;
       tfoot.innerHTML =
         `<tr class="table-success">
-           <td class="fw-bold">Total (${startYear}–${String(startYear + 1).slice(-2)})</td>
-           <td class="text-center fw-bold">${total}</td>
+           <td class="fw-bolder">Total (${startYear}–${String(startYear + 1).slice(-2)})</td>
+           <td class="text-center fw-bolder">${total}</td>
          </tr>`;
     }
 
