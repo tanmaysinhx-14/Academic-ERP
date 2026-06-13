@@ -9,6 +9,9 @@ composer.lock
 # Custom sensitive logic
 /functions/
 
+Report.md
+report.txt
+
 # Environment / secrets (add if applicable)
 .env
 .env.*

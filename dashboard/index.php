@@ -10,64 +10,64 @@
 ?>
 
 <?php // Backend for Dashboard
-  if(checkForEquality(getUserRoleUsingUsercode($_SESSION['usercode']), 'student', 'strict')) {
-    function fetchDashboardNotifications(PDO $db, string $role, string $studentBatch = ''): array {
-      try {
-        if (checkForEquality($role, 'student', 'strict')) {
-          /*
-          * Fetch non-expired student notifications, then filter in PHP
-          * against the student's own batch code.
-          * Using PHP-side filter keeps this compatible with any MariaDB version
-          * and avoids JSON_CONTAINS edge cases with older drivers.
-          */
-          $stmt = $db->prepare(
-            'SELECT notification_heading,
-                    notification_subheading,
-                    notification_expire_timestamp,
-                    notification_batch_value
-            FROM   notification_records
-            WHERE  notification_user_role        = :role
-              AND  notification_expire_timestamp > NOW()
-            ORDER  BY notification_expire_timestamp ASC'
-          );
-          $stmt->bindValue(':role', 'student', PDO::PARAM_STR);
-          $stmt->execute();
-          $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-          return array_values(array_filter($rows, function (array $row) use ($studentBatch): bool {
-            $batches = json_decode($row['notification_batch_value'] ?? '[]', true) ?: [];
-            return in_array($studentBatch, $batches, true);
-          }));
-        }
-
-        // Faculty → all non-expired faculty notifications (no batch check needed)
-        // Admin   → all non-expired notifications of any role
-        $whereRole = (checkForEquality($role, 'faculty', 'strict'))
-          ? 'WHERE notification_user_role = :role AND notification_expire_timestamp > NOW()'
-          : 'WHERE notification_expire_timestamp > NOW()'; // admin sees all
-
+  function fetchDashboardNotifications(PDO $db, string $role): array {
+    try {
+      if (checkForEquality($role, 'student', 'strict')) {
+        $batchDetails = $userRecord['student_batch_details'] ?? null;
+        /*
+        * Fetch non-expired student notifications, then filter in PHP
+        * against the student's own batch code.
+        * Using PHP-side filter keeps this compatible with any MariaDB version
+        * and avoids JSON_CONTAINS edge cases with older drivers.
+        */
         $stmt = $db->prepare(
-          "SELECT notification_heading,
+          'SELECT notification_heading,
                   notification_subheading,
                   notification_expire_timestamp,
-                  notification_user_role,
                   notification_batch_value
           FROM   notification_records
-          $whereRole
-          ORDER  BY notification_expire_timestamp ASC"
+          WHERE  notification_user_role        = :role
+            AND  notification_expire_timestamp > NOW()
+          ORDER  BY notification_expire_timestamp ASC'
         );
-        if (checkForEquality($role, 'faculty', 'strict')) {
-          $stmt->bindValue(':role', 'faculty', PDO::PARAM_STR);
-        }
+        $stmt->bindValue(':role', 'student', PDO::PARAM_STR);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return array_values(array_filter($rows, function (array $row) use ($batchDetails): bool {
+          $batches = json_decode($row['notification_batch_value'] ?? '[]', true) ?: [];
+          return in_array($batchDetails, $batches, true);
+        }));
       }
-      catch (PDOException) {
-        return [];
+
+      // Faculty → all non-expired faculty notifications (no batch check needed)
+      // Admin   → all non-expired notifications of any role
+      $whereRole = (checkForEquality($role, 'faculty', 'strict'))
+        ? 'WHERE notification_user_role = :role AND notification_expire_timestamp > NOW()'
+        : 'WHERE notification_expire_timestamp > NOW()'; // admin sees all
+
+      $stmt = $db->prepare(
+        "SELECT notification_heading,
+                notification_subheading,
+                notification_expire_timestamp,
+                notification_user_role,
+                notification_batch_value
+        FROM   notification_records
+        $whereRole
+        ORDER  BY notification_expire_timestamp ASC"
+      );
+      if (checkForEquality($role, 'faculty', 'strict')) {
+        $stmt->bindValue(':role', 'faculty', PDO::PARAM_STR);
       }
-    }  
-    $dashboardNotifications = fetchDashboardNotifications($db2, getUserRoleUsingUsercode($_SESSION['usercode']), $userRecord['student_batch_details']);
-  }
+      $stmt->execute();
+      return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+    catch (PDOException) {
+      return [];
+    }
+  }  
+
+  $dashboardNotifications = fetchDashboardNotifications($db2, getUserRoleUsingUsercode($_SESSION['usercode']));
 ?>
 
 <?php // Headers
@@ -328,6 +328,22 @@
             <span class="badge py-2 px-4 mb-5 bg-white rounded-pill text-primary fs-sm fw-bolder">
               Faculty Dashboard
             </span>
+            <style>
+              .notif-arrow {animation: moveArrow 1.2s ease-in-out infinite;}
+
+              @keyframes moveArrow {
+                0% { transform: translate(0, 0); opacity: 1; }
+                50% { transform: translate(5px, -5px);  }
+                100% { transform: translate(0, 0); opacity: 1; }
+              }
+            </style>
+            <button class="badge bg-success rounded-pill border-0 px-4 mb-5 fs-sm fw-bolder"
+                    onclick="openDialog('notifDialog')">
+              Notifications
+              <svg class="notif-arrow"width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M7 17L17 7M17 7H8M17 7V16" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g>
+              </svg>
+            </button>
             <h1 class="display-2 text-white">
               Welcome,
               <span class="fw-bolder">

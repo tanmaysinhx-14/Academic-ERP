@@ -118,10 +118,10 @@
     $notificationSubheading  = escapeOutput($_POST['edit_notification_subheading'])          ?? null;
     $notificationExpiry      = escapeOutput($_POST['edit_notification_expire_timestamp'])    ?? null;
     $notificationRole        = escapeOutput($_POST['edit_notification_user_role'])           ?? null;
-    $batches     = ($notificationRole === 'student' && isset($_POST['edit_notification_batches']))
+    $notificationBatches     = ($notificationRole === 'student' && isset($_POST['edit_notification_batches']))
                       ? array_map('htmlspecialchars', $_POST['edit_notification_batches'])
                       : [];
-    $batchValue  = ($notificationRole === 'student') ? json_encode($batches) : json_encode([]);
+    $batchValue  = ($notificationRole === 'student') ? json_encode($notificationBatches) : json_encode([]);
     $csrfToken   = escapeOutput($_POST['csrf_token']) ?? null;
 
     if (validateCsrfToken($csrfToken)) {
@@ -149,7 +149,7 @@
         setToast('Please select a valid target role.', 'danger', 6000);
         $isValidNotification = false;
       }
-      if ($isValidNotification && $notificationRole === 'student' && empty($batches)) {
+      if ($isValidNotification && $notificationRole === 'student' && empty($notificationBatches)) {
         setToast('Please select at least one batch for student notifications.', 'danger', 6000);
         $isValidNotification = false;
       }
@@ -168,12 +168,12 @@
                                         notification_batch_value         = :batches
                                     WHERE id = :id
                                     LIMIT 1');
-            $STMT_updateNotificationRecord->bindValue(':heading',    $heading,    PDO::PARAM_STR);
-            $STMT_updateNotificationRecord->bindValue(':subheading', $subheading, PDO::PARAM_STR);
-            $STMT_updateNotificationRecord->bindValue(':expiry',     $expiry,     PDO::PARAM_STR);
-            $STMT_updateNotificationRecord->bindValue(':role',       $role,       PDO::PARAM_STR);
-            $STMT_updateNotificationRecord->bindValue(':batches',    $batchValue, PDO::PARAM_STR);
-            $STMT_updateNotificationRecord->bindValue(':id',         $editId,     PDO::PARAM_INT);
+            $STMT_updateNotificationRecord->bindValue(':heading',    $notificationHeading,    PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':subheading', $notificationSubheading, PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':expiry',     $notificationExpiry,     PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':role',       $notificationRole,       PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':batches',    $batchValue,             PDO::PARAM_STR);
+            $STMT_updateNotificationRecord->bindValue(':id',         $notificationEditID,     PDO::PARAM_INT);
             $STMT_updateNotificationRecord->execute();
 
             setToast('Notification updated successfully.', 'success', 5000);

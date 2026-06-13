@@ -5,8 +5,9 @@
 
 html,
 body {
-  min-width: 100vw !important;
-  min-height: 100vh !important;
+  width: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Section fills all remaining space so footer is always at the very bottom */
